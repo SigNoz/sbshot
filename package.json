@@ -1,0 +1,58 @@
+{
+	"name": "@signozhq/sbshot",
+	"version": "1.0.0",
+	"description": "Screenshot Storybook stories, pixel-diff two runs, and watch both live in a local viewer",
+	"keywords": [
+		"storybook",
+		"screenshot",
+		"visual-regression",
+		"visual-testing",
+		"playwright",
+		"diff",
+		"cli"
+	],
+	"homepage": "https://github.com/SigNoz/sbshot#readme",
+	"bugs": {
+		"url": "https://github.com/SigNoz/sbshot/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/SigNoz/sbshot.git"
+	},
+	"license": "AGPL-3.0",
+	"author": "SigNoz",
+	"type": "module",
+	"bin": {
+		"sbshot": "bin/sbshot.mjs"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"files": [
+		"bin",
+		"src",
+		"ui",
+		"docs",
+		"skills"
+	],
+	"engines": {
+		"node": ">=22.5"
+	},
+	"packageManager": "pnpm@10.34.5",
+	"scripts": {
+		"test": "node --test test/*.test.mjs",
+		"fmt": "oxfmt --check",
+		"fmt:fix": "oxfmt",
+		"lint": "oxlint --deny-warnings",
+		"lint:fix": "oxlint --deny-warnings --fix",
+		"publint": "publint --strict"
+	},
+	"dependencies": {
+		"playwright": "^1.57.0"
+	},
+	"devDependencies": {
+		"oxfmt": "^0.71.0",
+		"oxlint": "^1.86.0",
+		"publint": "^0.3.24"
+	}
+}
