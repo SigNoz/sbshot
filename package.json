@@ -38,7 +38,6 @@
 	"engines": {
 		"node": ">=22.5"
 	},
-	"packageManager": "pnpm@10.34.5",
 	"scripts": {
 		"test": "node --test test/*.test.mjs",
 		"fmt": "oxfmt --check",

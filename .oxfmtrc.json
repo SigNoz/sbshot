@@ -7,5 +7,5 @@
 	"arrowParens": "always",
 	"printWidth": 100,
 	"sortPackageJson": false,
-	"ignorePatterns": ["**/*.md", "pnpm-lock.yaml", ".deepsec/**", ".sbshot/**"]
+	"ignorePatterns": ["**/*.md", "pnpm-lock.yaml", ".deepsec/**", ".sbshot/**", ".primus/**"]
 }

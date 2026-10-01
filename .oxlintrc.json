@@ -4,6 +4,7 @@
 		"node": true,
 		"browser": true
 	},
+	"ignorePatterns": [".primus/**"],
 	"rules": {
 		"no-unused-vars": ["error", { "ignoreRestSiblings": true }]
 	}
