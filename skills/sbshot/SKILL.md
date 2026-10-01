@@ -57,6 +57,14 @@ and they turn the question into concrete options instead of open-ended ones.
   shoots the old code), and whatever answers `index.json` on 6006 and 6007.
   `sbshot list <project>` builds the project first, so run `list` against a
   build or a URL when one is there.
+  **Verify a running server belongs to this project before shooting it, every
+  time.** A listener on 6006 or 6007 is often another repo's storybook (a
+  component library's docs, a sibling checkout). Find its owner: `ps aux |
+  grep storybook` and `readlink /proc/$(lsof -ti :<port>)/cwd`, or the paths in
+  its process args. It must sit under the current project. Also check that
+  `index.json` holds this project's story titles and ids. When either check
+  fails, ignore the server and capture the project (`sbshot capture <project>`)
+  or a build. Never assume a URL is right because it answers.
 - **The modes the preview offers.** `sbshot modes <storybook>` loads the
   preview and prints its toolbar globals with their values and defaults
   (`*`), the flag that sets each, the project's Chromatic modes with their
@@ -335,8 +343,9 @@ whose notes say `0 cropped` never reaches the state: pick another story.
 
 - Pointing the human at pairs without tagging them sends them searching the
   viewer by hand. Tag first, then give the links.
-- Port 6006 is often another project's storybook. Check `index.json` holds
-  the ids you expect before shooting a dev server.
+- Port 6006 is often another project's storybook. Check the server's process
+  path is under this project and `index.json` holds the ids you expect before
+  shooting a dev server. A wrong one shows up as mass `page.goto` timeouts too.
 - Two `storybook dev` servers on the same config share a Vite cache and die
   with `Invalid hook call`. Use a build.
 - Zero changed pixels is a real answer, not a broken capture.
