@@ -1,0 +1,11 @@
+{
+	"$schema": "./node_modules/oxfmt/configuration_schema.json",
+	"useTabs": true,
+	"singleQuote": true,
+	"semi": true,
+	"trailingComma": "all",
+	"arrowParens": "always",
+	"printWidth": 100,
+	"sortPackageJson": false,
+	"ignorePatterns": ["**/*.md", "pnpm-lock.yaml", ".deepsec/**", ".sbshot/**", ".primus/**"]
+}
