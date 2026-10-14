@@ -48,8 +48,24 @@ const contained = (rel) =>
  * the same, unless `png` or ImageMagick cannot write WebP. WebP stops at
  * 16383 pixels a side, so a taller shot stays PNG; `api/jobs.json` lists
  * those, and the page asks for `.webp` in place of every other `.png`.
+ *
+ * With `filesBase`, the page loads `files/` from that URL instead of beside
+ * itself, for a host that caps the number of files. The images are still
+ * written, to be uploaded there; that host must send
+ * `Access-Control-Allow-Origin`, or copy and GIF cannot read the pixels.
  */
-export const exportPlan = (workspace, dirs, { all = false, runs = false, png = false } = {}) => {
+export const exportPlan = (
+	workspace,
+	dirs,
+	{ all = false, runs = false, png = false, filesBase = null } = {},
+) => {
+	const filesUrl =
+		filesBase && URL.canParse(filesBase)
+			? new URL(filesBase.endsWith('/') ? filesBase : `${filesBase}/`)
+			: null;
+	if (filesBase && !['http:', 'https:'].includes(filesUrl?.protocol)) {
+		throw new Error(`--files-base must be an http or https URL: ${filesBase}`);
+	}
 	// A diff may name a run that has been deleted since.
 	const real = (dir) => (existsSync(dir) ? realpathSync(dir) : path.resolve(dir));
 	const known = new Map(listJobs(workspace).map((job) => [real(job.dir), job]));
@@ -159,7 +175,8 @@ export const exportPlan = (workspace, dirs, { all = false, runs = false, png = f
 		for (const pair of results) {
 			if (pair.note !== 'missing previous') addFile(base, baseDir, pair.file);
 			if (pair.note !== 'missing current') addFile(after, afterDir, pair.file);
-			if (pair.output && !pair.note) addFile(site, dir, pair.output);
+			// The page shows `plain` where there is one, never the montage.
+			if (pair.output && !pair.note && !pair.plain) addFile(site, dir, pair.output);
 			if (pair.plain) addFile(site, dir, pair.plain);
 		}
 		if (runs) {
@@ -213,6 +230,7 @@ export const exportPlan = (workspace, dirs, { all = false, runs = false, png = f
 			start: first && `#/job/${first.kind}/${encodeURIComponent(first.name)}`,
 			images: webp ? 'webp' : 'png',
 			png: kept,
+			filesBase: filesUrl?.href ?? null,
 		},
 	]);
 

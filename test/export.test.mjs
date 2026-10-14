@@ -108,6 +108,39 @@ test('an export holds the changed pairs, their shots, and no local path', async 
 	}
 });
 
+test('a pair with a plain diff image leaves its montage out', async () => {
+	const root = workspace();
+	try {
+		const diff = path.join(root, 'diffs', 'a--b');
+		const json = JSON.parse(readFileSync(path.join(diff, 'diff.json'), 'utf8'));
+		json.results[0].plain = 'dark/x.plain.png';
+		put(path.join(diff, 'diff.json'), JSON.stringify(json));
+		put(path.join(diff, 'dark/x.plain.png'), 'plain');
+		const site = exportPlan(root, [diff], { png: true }).entries.map((entry) => entry.path);
+		assert.ok(site.includes('files/diffs/a--b/dark/x.plain.png'));
+		assert.ok(!site.includes('files/diffs/a--b/dark/x.png'));
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test('an export can load its images from another host', async () => {
+	const root = workspace();
+	try {
+		const diff = path.join(root, 'diffs', 'a--b');
+		const out = path.join(root, 'site');
+		await writeExport(exportPlan(root, [diff], { filesBase: 'https://cdn.example/a' }), out);
+		const jobs = JSON.parse(readFileSync(path.join(out, 'api/jobs.json'), 'utf8'));
+		assert.equal(jobs.filesBase, 'https://cdn.example/a/');
+		assert.ok(existsSync(path.join(out, 'files/diffs/a--b/dark/x.png')), 'still written');
+		for (const filesBase of ['files/', 'ftp://cdn.example/a/']) {
+			assert.throws(() => exportPlan(root, [diff], { filesBase }), /http or https/, filesBase);
+		}
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
 test(
 	'shots go out as lossless WebP, but for one too tall for it',
 	{ skip: !writesWebp() && 'no ImageMagick with WebP' },

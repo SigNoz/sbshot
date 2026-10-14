@@ -46,7 +46,8 @@ export const downloadExport = async (url) => {
 	location.href = url;
 };
 
-// An export may hold its shots as WebP, but for the few too tall for it.
+// An export may hold its shots as WebP, but for the few too tall for it, and
+// may keep them on another host (`filesBase`).
 const site = STATIC ? await fetch('api/jobs.json').then((response) => response.json()) : null;
 const keptPng = new Set(site?.png ?? []);
 const sitePath = (dir, rel) => {
@@ -54,7 +55,7 @@ const sitePath = (dir, rel) => {
 	if (site?.images === 'webp' && file.endsWith('.png') && !keptPng.has(file)) {
 		file = `${file.slice(0, -4)}.webp`;
 	}
-	return file.split('/').map(encodeURIComponent).join('/');
+	return `${site?.filesBase ?? ''}${file.split('/').map(encodeURIComponent).join('/')}`;
 };
 export const fileUrl = (dir, rel) =>
 	STATIC ? sitePath(dir, rel) : `/file?p=${encodeURIComponent(`${dir}/${rel}`)}`;

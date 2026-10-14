@@ -370,6 +370,16 @@ WebP. Runs and diffs in the workspace stay PNG either way: the diff reads PNG
 directly, and older baselines keep pairing.
 Verdicts already set show up, and cannot be changed.
 
+A host that caps the number of files, like Cloudflare Pages at 20,000, can
+keep the page while the images go elsewhere. `--files-base <url>` makes the
+page load `files/` from that URL: upload the export's `files/` folder there
+and the rest to the page's host. The image host must answer with
+`Access-Control-Allow-Origin`, or copy and GIF cannot read the pixels.
+
+```bash
+sbshot export before--after --files-base https://images.example.com/before--after/
+```
+
 The export holds no local paths: directories become their place in the site,
 and a storybook path its last segment. `--out` only replaces a folder that is
 empty or an earlier export, and `--zip` only a file that is an earlier export.
