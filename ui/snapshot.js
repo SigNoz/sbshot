@@ -141,13 +141,13 @@ export const snapshot = async (pair, sources, view) => {
 		return { blob: await png(canvas), type: 'png' };
 	}
 
-	// The stacked views: the after shot sets the size, the baseline is drawn
-	// over it at the same width and cut to it.
+	// The stacked views: the after shot sets the width, and for swipe and
+	// onion the height too, with the baseline drawn over it and cut to it.
 	const width = after?.width ?? base?.width ?? pair.width ?? 800;
 	const height = after ? after.height : base ? (base.height * width) / base.width : 300;
-	const stack = (context, y, { baseline = true, alpha = 1, split = 100 } = {}) => {
+	const stack = (context, y, { alpha = 1, split = 100 } = {}) => {
 		drawShot(context, after, 0, y, width, height, 'missing in after');
-		if (baseline && base) {
+		if (base) {
 			context.save();
 			context.beginPath();
 			context.rect(0, y, (width * split) / 100, height);
@@ -159,15 +159,23 @@ export const snapshot = async (pair, sources, view) => {
 		box(context, 0, y, width, height);
 	};
 
+	// Each blink frame holds one shot alone and takes the taller one's height,
+	// so a taller after never shows under a shorter baseline.
 	if (view.mode === 'blink') {
-		const frames = [true, false].map((baseline) => {
-			const { context } = canvasOf(width, LABEL + height);
-			drawLabel(context, baseline ? 'baseline' : 'after', 0, 0, width);
-			stack(context, LABEL, { baseline });
+		const baseHeight = base ? (base.height * width) / base.width : height;
+		const tall = Math.max(height, baseHeight);
+		const frames = [
+			['baseline', base, baseHeight, 'missing in baseline'],
+			['after', after, height, 'missing in after'],
+		].map(([label, shot, shotHeight, missing]) => {
+			const { context } = canvasOf(width, LABEL + tall);
+			drawLabel(context, label, 0, 0, width);
+			drawShot(context, shot, 0, LABEL, width, shotHeight, missing);
+			box(context, 0, LABEL, width, tall);
 			return context.getImageData(0, 0, context.canvas.width, context.canvas.height).data;
 		});
 		return {
-			blob: encodeGif(frames, Math.round(width), Math.round(LABEL + height), BLINK),
+			blob: encodeGif(frames, Math.round(width), Math.round(LABEL + tall), BLINK),
 			type: 'gif',
 		};
 	}

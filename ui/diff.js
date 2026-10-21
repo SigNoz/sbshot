@@ -428,12 +428,19 @@ export const diffView = async (name, params) => {
 					top.style.opacity = ui.opacity / 100;
 				};
 			} else {
+				// Blink shows one shot at a time, so a taller after never shows
+				// under a shorter baseline, and the stack takes the taller one.
+				// The box stays with the after shot, whose pixels it measures.
+				stack.classList.add('blink');
+				if (overlay) bottom.append(overlay);
+				const afterShot = bottom.firstChild;
 				let showBase = true;
 				const label = document.createElement('span');
 				label.className = 'pill';
 				controls.append(label);
 				const flip = () => {
 					top.style.visibility = showBase ? 'visible' : 'hidden';
+					afterShot.style.visibility = showBase ? 'hidden' : 'visible';
 					label.textContent = showBase ? 'baseline' : 'after';
 					showBase = !showBase;
 				};
