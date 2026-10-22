@@ -17,11 +17,13 @@ export const exportJobs = async (argv) => {
 			all: { type: 'boolean', default: false },
 			runs: { type: 'boolean', default: false },
 			png: { type: 'boolean', default: false },
+			'files-base': { type: 'string' },
 			help: { type: 'boolean', short: 'h', default: false },
 		},
 	});
 	if (opts.help) {
 		console.log(`usage: sbshot export [job...] [--out dir] [--zip] [--all] [--runs] [--png]
+                     [--files-base url]
 
 Writes finished diffs and runs as a static site: the viewer, read-only, with
 the images it needs. Serve the folder from any static host (Cloudflare Pages,
@@ -37,6 +39,11 @@ GitHub Pages, S3) and send the link. With one diff the page opens on it.
   --png       keep the shots as PNG. By default they become lossless WebP,
               about a third of the size and the same pixels (needs
               ImageMagick with WebP; without it they stay PNG)
+  --files-base url
+              load the images from url instead of beside the page, for a
+              host that caps the file count: upload \`files/\` there, the rest
+              to the page's host. The url host must send
+              Access-Control-Allow-Origin for copy and GIF to work
 
 Local paths are left out: the page shows job names only.`);
 		return 0;
@@ -50,7 +57,12 @@ Local paths are left out: the page shows job names only.`);
 		}
 		return dir;
 	});
-	const plan = exportPlan(workspace, dirs, { all: opts.all, runs: opts.runs, png: opts.png });
+	const plan = exportPlan(workspace, dirs, {
+		all: opts.all,
+		runs: opts.runs,
+		png: opts.png,
+		filesBase: opts['files-base'],
+	});
 	const out = path.resolve(opts.out ?? path.join(workspace, 'exports', plan.name));
 	const files = plan.entries.length;
 	if (opts.zip) {

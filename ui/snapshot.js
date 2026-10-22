@@ -15,6 +15,9 @@ const css = (name) => getComputedStyle(document.documentElement).getPropertyValu
 const load = async (source) => {
 	if (!source) return null;
 	const image = new Image();
+	// An export's images may sit on another host, and a canvas only gives
+	// back the pixels of one loaded with CORS.
+	image.crossOrigin = 'anonymous';
 	image.src = source.src;
 	await image.decode();
 	return {
