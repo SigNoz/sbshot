@@ -540,6 +540,16 @@ a.button.disabled {
 	position: relative;
 }
 
+.stack.blink {
+	display: grid;
+}
+
+.stack.blink > .layer {
+	position: relative;
+	grid-area: 1 / 1;
+	align-self: start;
+}
+
 .side {
 	display: grid;
 	gap: 8px;
