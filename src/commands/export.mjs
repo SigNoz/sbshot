@@ -41,7 +41,7 @@ GitHub Pages, S3) and send the link. With one diff the page opens on it.
               ImageMagick with WebP; without it they stay PNG)
   --files-base url
               load the images from url instead of beside the page, for a
-              host that caps the file count: upload files/ there, the rest
+              host that caps the file count: upload \`files/\` there, the rest
               to the page's host. The url host must send
               Access-Control-Allow-Origin for copy and GIF to work
 
