@@ -158,7 +158,10 @@ pnpm run publint     # the package as npm would publish it
 ```
 
 CI (`.github/workflows/jsci.yaml`) runs the tests on Node 22 and 24, the
-format check, the linter and publint on every pull request to `master`.
+format check, the linter and publint on every pull request to `main`.
+
+Releases go through Release Please and npm trusted publishing, see
+[RELEASE.md](./RELEASE.md). PR titles must follow Conventional Commits.
 
 The tests cover the pixel maths, progress and ETA, the workspace and the
 viewer's server. For changes to capture, also run a real capture on a few
