@@ -23,6 +23,7 @@ const {
 	maxHeight: MAX_HEIGHT,
 	grow,
 	settle: SETTLE,
+	heldAfter: HELD_AFTER,
 	clock,
 	motion,
 	ignore: ignoreSelectors,
@@ -121,13 +122,15 @@ const shoot = async (key, story, theme) => {
 	const quiet = async () => {
 		await page.evaluate(() => document.fonts.ready);
 		const quietUntil = Date.now() + 15_000;
+		const silent = () => Date.now() - lastActivity >= HELD_AFTER;
 		while (
 			Date.now() < quietUntil &&
+			!silent() &&
 			(pending() || Date.now() - lastActivity < 600 || (await busyOnScreen()))
 		) {
 			await page.waitForTimeout(200);
 		}
-		if (Date.now() >= quietUntil) {
+		if (Date.now() >= quietUntil || silent()) {
 			inFlight.forEach((request) => heldRequests.add(request));
 			await page.evaluate(() => {
 				const held = (window.__sbshotHeldBusy ??= new WeakSet());

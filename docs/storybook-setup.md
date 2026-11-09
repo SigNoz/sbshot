@@ -150,7 +150,10 @@ sbshot waits, in order, for:
 2. No network request for 600 ms, and no visible `[aria-busy="true"]`
    element, for up to 15 seconds. A panel that shows a spinner before it
    sends its query is caught by the second check, so mark loading states
-   with `aria-busy`.
+   with `aria-busy`. Whatever is still open when the wait ends, or after
+   `--held-after` milliseconds with no request starting or finishing, is
+   held: a loading state that never answers on purpose. Later waits in the
+   same story skip it.
 3. Web fonts, two animation frames, then `--settle` milliseconds.
 4. `window.__sbshotSettle()`, when the preview defines it (see below).
 5. Two identical frames in a row, up to eight tries 400 ms apart. A story
