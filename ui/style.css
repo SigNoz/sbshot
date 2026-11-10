@@ -12,6 +12,8 @@
 	--changed: #ff8a3d;
 	--missing: #c77dff;
 	--flaky: #8b93a3;
+	--shot-base: #4c8dff;
+	--shot-after: #ff8a3d;
 	--mono: ui-monospace, 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
 	color-scheme: dark;
 }
@@ -548,6 +550,30 @@ a.button.disabled {
 	position: relative;
 	grid-area: 1 / 1;
 	align-self: start;
+}
+
+/* The outline sits outside the shot, and the padding keeps the stage from
+   clipping it, so no pixel of either image is covered. */
+.stack.blink {
+	padding: 4px;
+}
+
+.stack.blink .shot-base {
+	outline: 4px solid var(--shot-base);
+}
+
+.stack.blink .shot-after {
+	outline: 4px solid var(--shot-after);
+}
+
+.pill.shot-base {
+	color: var(--shot-base);
+	border-color: var(--shot-base);
+}
+
+.pill.shot-after {
+	color: var(--shot-after);
+	border-color: var(--shot-after);
 }
 
 .side {

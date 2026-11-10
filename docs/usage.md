@@ -325,7 +325,10 @@ and start diffs; the command warns when it does.
   grid shows, in its order, and `y` copies the shot as a PNG (caption band
   included).
 - A diff's page lists the changed pairs, largest first, and shows the
-  selected one.
+  selected one. It opens in blink with the change box off; the page keeps
+  the mode and the box you pick last. In blink the baseline has a blue
+  outline and the after shot an orange one, drawn outside the shot, so the
+  edges tell the two apart after you scroll past the label.
 - The copy image button (`y`) puts the view as it is on screen in the
   clipboard, at the shots' own resolution: the mode, the change box, the
   swipe line and the onion opacity. Blink has no still image, so its button
