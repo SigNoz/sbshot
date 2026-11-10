@@ -23,6 +23,7 @@ const {
 	maxHeight: MAX_HEIGHT,
 	grow,
 	settle: SETTLE,
+	heldAfter: HELD_AFTER,
 	clock,
 	motion,
 	ignore: ignoreSelectors,
@@ -90,35 +91,51 @@ const shoot = async (key, story, theme) => {
 
 	// react-query retries and msw both keep requests going long after load, so
 	// the settle waits on the page being quiet rather than on a fixed delay.
-	let inFlight = 0;
+	const inFlight = new Set();
 	let lastActivity = Date.now();
-	page.on('request', () => {
-		inFlight += 1;
+	page.on('request', (request) => {
+		inFlight.add(request);
 		lastActivity = Date.now();
 	});
-	const done = () => {
-		inFlight = Math.max(inFlight - 1, 0);
+	const done = (request) => {
+		inFlight.delete(request);
 		lastActivity = Date.now();
 	};
 	page.on('requestfinished', done);
 	page.on('requestfailed', done);
 
+	// A loading story holds its requests open on purpose, and its spinners with
+	// them. What outlasts one full wait is held: later waits in the same story,
+	// after each resize, skip it rather than time out on it again.
+	const heldRequests = new Set();
+	const pending = () => [...inFlight].some((request) => !heldRequests.has(request));
+
 	// A panel that has not sent its query yet shows a spinner the network
 	// cannot see, so a visible `aria-busy` counts as not quiet either.
 	const busyOnScreen = () =>
-		page.evaluate(() =>
-			[...document.querySelectorAll('[aria-busy="true"]')].some(
-				(element) => element.getClientRects().length > 0,
-			),
-		);
+		page.evaluate(() => {
+			const held = (window.__sbshotHeldBusy ??= new WeakSet());
+			return [...document.querySelectorAll('[aria-busy="true"]')].some(
+				(element) => element.getClientRects().length > 0 && !held.has(element),
+			);
+		});
 	const quiet = async () => {
 		await page.evaluate(() => document.fonts.ready);
 		const quietUntil = Date.now() + 15_000;
+		const silent = () => Date.now() - lastActivity >= HELD_AFTER;
 		while (
 			Date.now() < quietUntil &&
-			(inFlight > 0 || Date.now() - lastActivity < 600 || (await busyOnScreen()))
+			!silent() &&
+			(pending() || Date.now() - lastActivity < 600 || (await busyOnScreen()))
 		) {
 			await page.waitForTimeout(200);
+		}
+		if (Date.now() >= quietUntil || silent()) {
+			inFlight.forEach((request) => heldRequests.add(request));
+			await page.evaluate(() => {
+				const held = (window.__sbshotHeldBusy ??= new WeakSet());
+				document.querySelectorAll('[aria-busy="true"]').forEach((element) => held.add(element));
+			});
 		}
 	};
 

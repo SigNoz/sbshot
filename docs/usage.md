@@ -213,6 +213,7 @@ most.
 | `--max-height <px>` | maximum viewport height (default 8000) |
 | `--grow <mode>` | `scrollers` (default): grow the viewport until the tallest inner scroll area fits, so a long table is shot whole. `document`: follow the page height only. `none`: keep `--height` |
 | `--settle <ms>` | extra wait after the page goes quiet (default 300) |
+| `--held-after <ms>` | network silence after which open requests and visible `aria-busy` count as held on purpose, such as a loading state's never-answered request (default 15000) |
 | `--args <k:v;k2:v2>` | story arg overrides, in Storybook's `?args=` syntax |
 | `--globals <k:v;..>` | extra Storybook globals |
 | `--clock <iso\|live>` | the date passed to the preview (default `2026-06-15T12:00:00.000Z`) |

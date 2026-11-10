@@ -166,7 +166,7 @@ story, relative to the project; repeatable).
 
 Page: `--width` (1680, the only fixed dimension), `--height` (1200, the
 shortest the viewport may be), `--grow scrollers|document|none`, `--settle`,
-`--clock <iso|live>`, `--motion`, `--args k:v;k2:v2`, `--globals k:v`,
+`--held-after <ms>`, `--clock <iso|live>`, `--motion`, `--args k:v;k2:v2`, `--globals k:v`,
 `--ignore <selector>`, `--highlight <selector>`, `--crop <selector>`.
 
 Keep every page flag identical between the two sides of a comparison, or the
@@ -326,7 +326,9 @@ whose notes say `0 cropped` never reaches the state: pick another story.
 - Readiness is Storybook's own render phase (`finished`, after loaders,
   decorators and `play`), then no request for 600 ms and no visible
   `aria-busy`, fonts loaded, two animation frames, `--settle` ms, then two
-  identical frames in a row.
+  identical frames in a row. A request or `aria-busy` still there after the
+  15 s wait, or after `--held-after` ms with no request starting or
+  finishing, is held on purpose (a loading state) and later waits skip it.
 - The clock is passed as `?storyClock` (frozen by default). A preview that
   reads it shoots every story at the same instant.
 - `[data-shot-ignore]`, `[data-chromatic="ignore"]` and `--ignore` hide what

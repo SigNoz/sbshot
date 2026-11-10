@@ -77,6 +77,8 @@ Page
   --max-height <px>   tallest the viewport may grow to (default 8000)
   --grow <what>       scrollers (default) | document | none
   --settle <ms>       wait after the page goes quiet (default 300)
+  --held-after <ms>   network silence after which open requests and visible
+                      [aria-busy] count as held on purpose (default 15000)
   --clock <iso|live>  wall clock passed as ?storyClock (default ${FROZEN_CLOCK})
   --motion            keep animations and transitions running
   --ignore <selector> hide matching elements, on top of [data-shot-ignore]
@@ -126,6 +128,7 @@ const OPTIONS = {
 	'max-height': { type: 'string', default: '8000' },
 	grow: { type: 'string', default: 'scrollers' },
 	settle: { type: 'string', default: '300' },
+	'held-after': { type: 'string', default: '15000' },
 	clock: { type: 'string', default: FROZEN_CLOCK },
 	motion: { type: 'boolean', default: false },
 	ignore: { type: 'string', multiple: true, default: [] },
@@ -200,7 +203,7 @@ export const capture = async (argv) => {
 		console.error(`--clock: not a date: ${opts.clock}`);
 		return 1;
 	}
-	for (const flag of ['width', 'height', 'max-height', 'settle', 'jobs']) {
+	for (const flag of ['width', 'height', 'max-height', 'settle', 'held-after', 'jobs']) {
 		const value = opts[flag];
 		if (value !== undefined && !(Number.isInteger(Number(value)) && Number(value) >= 0)) {
 			console.error(`--${flag}: not a whole number: ${value}`);
@@ -393,6 +396,7 @@ export const capture = async (argv) => {
 		grow: opts.grow,
 		motion: opts.motion ? 'live' : 'still',
 		settle: opts.settle,
+		heldAfter: opts['held-after'],
 		ignore: ignoreSelectors,
 		highlight: highlightSelector,
 		crop: cropSelector,
@@ -483,6 +487,7 @@ export const capture = async (argv) => {
 		maxHeight: Number(opts['max-height']),
 		grow: opts.grow,
 		settle: Number(opts.settle),
+		heldAfter: Number(opts['held-after']),
 		clock: opts.clock,
 		motion: opts.motion,
 		ignore: ignoreSelectors,
