@@ -332,7 +332,8 @@ and start diffs; the command warns when it does.
 - The copy image button (`y`) puts the view as it is on screen in the
   clipboard, at the shots' own resolution: the mode, the change box, the
   swipe line and the onion opacity. Blink has no still image, so its button
-  saves a looping GIF of the two frames instead. Without a clipboard (plain
+  saves a looping GIF of the two frames instead, each with its outline
+  colour. Without a clipboard (plain
   http off localhost) the PNG is downloaded.
 
 Keys on a diff's page:
