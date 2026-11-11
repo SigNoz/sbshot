@@ -73,8 +73,8 @@ export const diffView = async (name, params) => {
 	const tagsOf = (file) => Object.keys(tags).filter((tag) => tagFiles(tag).includes(file));
 	let state = initialState();
 	const ui = {
-		mode: localStorage.getItem('sbshot.mode') ?? 'swipe',
-		box: localStorage.getItem('sbshot.box') !== 'off',
+		mode: localStorage.getItem('sbshot.mode') ?? 'blink',
+		box: localStorage.getItem('sbshot.box') === 'on',
 		zoom: localStorage.getItem('sbshot.zoom') === 'on',
 		actual: false,
 		split: 50,
@@ -431,9 +431,13 @@ export const diffView = async (name, params) => {
 				// Blink shows one shot at a time, so a taller after never shows
 				// under a shorter baseline, and the stack takes the taller one.
 				// The box stays with the after shot, whose pixels it measures.
+				// Each shot carries its own outline colour, so the side edges say
+				// which one is up even when the label is scrolled out of view.
 				stack.classList.add('blink');
 				if (overlay) bottom.append(overlay);
 				const afterShot = bottom.firstChild;
+				top.classList.add('shot-base');
+				afterShot.classList.add('shot-after');
 				let showBase = true;
 				const label = document.createElement('span');
 				label.className = 'pill';
@@ -442,6 +446,7 @@ export const diffView = async (name, params) => {
 					top.style.visibility = showBase ? 'visible' : 'hidden';
 					afterShot.style.visibility = showBase ? 'hidden' : 'visible';
 					label.textContent = showBase ? 'baseline' : 'after';
+					label.className = `pill ${showBase ? 'shot-base' : 'shot-after'}`;
 					showBase = !showBase;
 				};
 				flip();

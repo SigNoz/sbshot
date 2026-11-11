@@ -8,6 +8,8 @@ import { encodeGif } from './gif.js';
 const GAP = 8;
 const LABEL = 24;
 const BLINK = 600;
+// The outline the page draws around each blink shot, kept outside the shot.
+const OUTLINE = 4;
 
 const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
@@ -54,10 +56,10 @@ const drawShot = (context, shot, x, y, width, height, missing) => {
 	context.textAlign = 'left';
 };
 
-const drawLabel = (context, text, x, y, width) => {
+const drawLabel = (context, text, x, y, width, color = css('--muted')) => {
 	context.fillStyle = css('--panel');
 	context.fillRect(x, y, width, LABEL);
-	context.fillStyle = css('--muted');
+	context.fillStyle = color;
 	context.font = '12px system-ui, sans-serif';
 	context.textBaseline = 'middle';
 	context.fillText(text, x + 6, y + LABEL / 2);
@@ -163,22 +165,30 @@ export const snapshot = async (pair, sources, view) => {
 	};
 
 	// Each blink frame holds one shot alone and takes the taller one's height,
-	// so a taller after never shows under a shorter baseline.
+	// so a taller after never shows under a shorter baseline. Each shot gets
+	// the page's outline colour around it, drawn in a margin of its own so no
+	// pixel of the shot is covered.
 	if (view.mode === 'blink') {
 		const baseHeight = base ? (base.height * width) / base.width : height;
 		const tall = Math.max(height, baseHeight);
+		const frameWidth = width + 2 * OUTLINE;
+		const frameHeight = LABEL + tall + 2 * OUTLINE;
 		const frames = [
-			['baseline', base, baseHeight, 'missing in baseline'],
-			['after', after, height, 'missing in after'],
-		].map(([label, shot, shotHeight, missing]) => {
-			const { context } = canvasOf(width, LABEL + tall);
-			drawLabel(context, label, 0, 0, width);
-			drawShot(context, shot, 0, LABEL, width, shotHeight, missing);
-			box(context, 0, LABEL, width, tall);
+			['baseline', base, baseHeight, 'missing in baseline', css('--shot-base')],
+			['after', after, height, 'missing in after', css('--shot-after')],
+		].map(([label, shot, shotHeight, missing, color]) => {
+			const { context } = canvasOf(frameWidth, frameHeight);
+			drawLabel(context, label, 0, 0, frameWidth, color);
+			context.fillStyle = color;
+			context.fillRect(0, LABEL, frameWidth, shotHeight + 2 * OUTLINE);
+			context.fillStyle = css('--bg');
+			context.fillRect(OUTLINE, LABEL + OUTLINE, width, shotHeight);
+			drawShot(context, shot, OUTLINE, LABEL + OUTLINE, width, shotHeight, missing);
+			box(context, OUTLINE, LABEL + OUTLINE, width, tall);
 			return context.getImageData(0, 0, context.canvas.width, context.canvas.height).data;
 		});
 		return {
-			blob: encodeGif(frames, Math.round(width), Math.round(LABEL + tall), BLINK),
+			blob: encodeGif(frames, Math.round(frameWidth), Math.round(frameHeight), BLINK),
 			type: 'gif',
 		};
 	}
