@@ -175,7 +175,11 @@ export const pct = (value, digits = 1) => `${(value * 100).toFixed(digits)}%`;
 export const clock = (ms) => (ms ? new Date(ms).toLocaleTimeString() : '');
 export const when = (ms) => (ms ? new Date(ms).toLocaleString() : '');
 export const bytes = (value) =>
-	value > 1e9 ? `${(value / 1e9).toFixed(1)} GB` : `${Math.round(value / 1e6)} MB`;
+	value >= 1e9
+		? `${(value / 1e9).toFixed(1)} GB`
+		: value >= 1e6
+			? `${(value / 1e6).toFixed(value >= 1e7 ? 0 : 1)} MB`
+			: `${Math.ceil(value / 1e3)} KB`;
 export const pill = (status, text = status) =>
 	`<span class="pill ${esc(status)}">${esc(text)}</span>`;
 

@@ -15,6 +15,7 @@ import { hostnameOf, LOOPBACK } from './loopback.mjs';
 import { fold } from './progress.mjs';
 import { setVerdict, VERDICTS } from './review.mjs';
 import { serveStatic } from './storybook.mjs';
+import { workspaceUsage } from './usage.mjs';
 import { eventsFile, KINDS, listJobs, readMeta, resolveJob, validName } from './workspace.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -245,6 +246,16 @@ export const serve = async ({ workspace, port = 0, host = '127.0.0.1' }) => {
 		return { url: (await storybooks.get(real)).url, ...shotWith };
 	};
 
+	// Disk use, walked once for every page that asks while a walk is on.
+	const measure = workspaceUsage(workspace);
+	let measuring = null;
+	const usage = () => {
+		measuring ??= measure().finally(() => {
+			measuring = null;
+		});
+		return measuring;
+	};
+
 	/** SSE of a job's events from `from` on, polled: fs.watch misses writes on synced folders. */
 	const streamEvents = (request, response, dir, from) => {
 		response.writeHead(200, {
@@ -366,6 +377,10 @@ export const serve = async ({ workspace, port = 0, host = '127.0.0.1' }) => {
 					workspace,
 					jobs: listJobs(workspace).map(summary),
 				});
+			}
+
+			if (pathname === '/api/usage') {
+				return json(response, await usage());
 			}
 
 			const jobMatch = /^\/api\/jobs\/(capture|diff)\/([^/]+)(\/[a-z]+)?$/.exec(pathname);

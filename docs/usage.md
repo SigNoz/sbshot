@@ -333,7 +333,12 @@ network address lets anyone who reaches the port see every shot, set verdicts
 and start diffs; the command warns when it does.
 
 - The home page lists runs and diffs, and can start a diff between any two
-  runs.
+  runs. It shows how much disk the workspace takes, split into runs, diffs,
+  orphan builds (no run points at them), the thumbnail cache and the rest,
+  and the size of each job. A run's size includes the storybook build it
+  made, which `sbshot rm` deletes with it, so the Size column (click it to
+  sort) says what deleting the job frees. A job linked in from elsewhere is
+  sized but not counted, since deleting it only removes the link.
 - A run's page shows progress, ETA, CPU use, the stories in progress,
   failures, the slowest stories, and the shots as they arrive. Filter by
   status, theme or text, and click a shot to see it full size. With a shot
