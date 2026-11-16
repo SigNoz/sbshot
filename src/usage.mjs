@@ -6,30 +6,47 @@ import { KINDS, listJobs } from './workspace.mjs';
 /** What a file takes on disk, as `du` counts it, or its length where blocks are not reported. */
 const onDisk = (info) => (Number.isFinite(info.blocks) ? info.blocks * 512 : info.size);
 
+/** The files a prune deletes: shots, diff images, crops, contact sheets and thumbnails. */
+export const IMAGE_EXTENSIONS = ['.png', '.webp', '.gif', '.jpg', '.jpeg'];
+const isImage = (name) => IMAGE_EXTENSIONS.includes(path.extname(name).toLowerCase());
+
 /**
- * Bytes a file or directory takes on disk, links not followed. The walk
- * reads a directory at a time and stats its entries together, so a run of
- * thousands of shots does not hold the viewer for the whole walk.
+ * What a file or directory takes on disk, links not followed, and how much
+ * of it is images. The walk reads a directory at a time and stats its
+ * entries together, so a run of thousands of shots does not hold the viewer
+ * for the whole walk.
  */
-export const diskUsage = async (target) => {
+export const measure = async (target) => {
 	let info;
 	try {
 		info = await lstat(target);
 	} catch {
-		return 0;
+		return { bytes: 0, images: 0, imageBytes: 0 };
 	}
 	if (!info.isDirectory()) {
-		return onDisk(info);
+		const bytes = onDisk(info);
+		const image = info.isFile() && isImage(target);
+		return { bytes, images: image ? 1 : 0, imageBytes: image ? bytes : 0 };
 	}
 	let entries;
 	try {
 		entries = await readdir(target);
 	} catch {
-		return onDisk(info);
+		return { bytes: onDisk(info), images: 0, imageBytes: 0 };
 	}
-	const sizes = await Promise.all(entries.map((entry) => diskUsage(path.join(target, entry))));
-	return sizes.reduce((sum, size) => sum + size, onDisk(info));
+	const parts = await Promise.all(entries.map((entry) => measure(path.join(target, entry))));
+	return parts.reduce(
+		(sum, part) => ({
+			bytes: sum.bytes + part.bytes,
+			images: sum.images + part.images,
+			imageBytes: sum.imageBytes + part.imageBytes,
+		}),
+		{ bytes: onDisk(info), images: 0, imageBytes: 0 },
+	);
 };
+
+/** Bytes a file or directory takes on disk, links not followed. */
+export const diskUsage = async (target) => (await measure(target)).bytes;
 
 /**
  * When a directory last changed, as far as a cheap look can tell: its own
@@ -56,19 +73,19 @@ const stampOf = async (dir) => {
 	}
 };
 
-/** A size kept until the directory's stamp moves, or `ttl` ms pass. */
-const sizeCache = (ttl) => {
+/** A measure kept until the directory's stamp moves, or `ttl` ms pass. */
+const measureCache = (ttl) => {
 	const cache = new Map();
 	return async (dir) => {
 		const stamp = await stampOf(dir);
 		const kept = cache.get(dir);
 		if (kept && kept.stamp === stamp && Date.now() - kept.at < ttl) {
-			return kept.size;
+			return kept.result;
 		}
-		const size = diskUsage(dir);
-		cache.set(dir, { stamp, at: Date.now(), size });
-		size.catch(() => cache.delete(dir));
-		return size;
+		const result = measure(dir);
+		cache.set(dir, { stamp, at: Date.now(), result });
+		result.catch(() => cache.delete(dir));
+		return result;
 	};
 };
 
@@ -80,7 +97,8 @@ const sizeCache = (ttl) => {
  * since deleting it here only removes the link.
  */
 export const workspaceUsage = (workspace) => {
-	const sizeOf = sizeCache(10 * 60_000);
+	const measured = measureCache(10 * 60_000);
+	const sizeOf = async (dir) => (await measured(dir)).bytes;
 	return async () => {
 		const jobs = listJobs(workspace);
 		const buildsDir = path.join(workspace, 'builds');
@@ -89,7 +107,7 @@ export const workspaceUsage = (workspace) => {
 			jobs.map(async (job) => {
 				const linked = (await lstat(job.dir).catch(() => null))?.isSymbolicLink() ?? false;
 				const real = await realpath(job.dir).catch(() => job.dir);
-				const own = await sizeOf(real);
+				const own = await measured(real);
 				const build =
 					typeof job.build === 'string' && path.dirname(path.resolve(job.build)) === buildsDir
 						? path.resolve(job.build)
@@ -103,8 +121,15 @@ export const workspaceUsage = (workspace) => {
 					kind: job.kind,
 					name: job.name,
 					dir: job.dir,
-					size: own + buildSize,
+					real,
+					status: job.status,
+					started: job.started,
+					ended: job.ended,
+					size: own.bytes + buildSize,
 					build: buildSize,
+					buildDir: build,
+					images: own.images,
+					imageBytes: own.imageBytes,
 					linked,
 				};
 			}),
@@ -112,6 +137,7 @@ export const workspaceUsage = (workspace) => {
 
 		const top = await readdir(workspace, { withFileTypes: true }).catch(() => []);
 		let builds = 0;
+		const orphanBuilds = [];
 		let cache = 0;
 		// The workspace directory's own entry, the way `du` counts it.
 		let other = await lstat(workspace).then(onDisk, () => 0);
@@ -137,9 +163,13 @@ export const workspaceUsage = (workspace) => {
 				for (const name of inside) {
 					const owner = name.endsWith('.log') ? name.slice(0, -4) : name;
 					if (!claimed.has(owner)) {
-						builds += name.endsWith('.log')
+						const bytes = name.endsWith('.log')
 							? await diskUsage(path.join(full, name))
 							: await sizeOf(path.join(full, name));
+						builds += bytes;
+						if (!name.endsWith('.log')) {
+							orphanBuilds.push({ dir: path.join(full, name), bytes });
+						}
 					}
 				}
 				other += onDisk(await lstat(full));
@@ -151,7 +181,9 @@ export const workspaceUsage = (workspace) => {
 		}
 
 		const inWorkspace = rows.filter((row) => !row.linked).reduce((sum, row) => sum + row.size, 0);
+		const own = rows.filter((row) => !row.linked);
 		return {
+			workspace,
 			total: inWorkspace + builds + cache + other,
 			runs: rows
 				.filter((row) => row.kind === 'capture' && !row.linked)
@@ -163,6 +195,10 @@ export const workspaceUsage = (workspace) => {
 			builds,
 			cache,
 			other,
+			images: own.reduce((sum, row) => sum + row.images, 0),
+			imageBytes: own.reduce((sum, row) => sum + row.imageBytes, 0),
+			lastActivity: Math.max(0, ...rows.map((row) => row.ended ?? row.started ?? 0)) || null,
+			orphanBuilds,
 			jobs: rows,
 		};
 	};

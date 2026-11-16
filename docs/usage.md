@@ -474,11 +474,25 @@ work: tag the modes, tag the causes, and any mode of any cause is one link.
 | `sbshot rm <job>...` | delete runs or diffs, and the builds a run made. A running job is refused |
 | `sbshot link <dir> [name]` | add one run or diff from another directory, as a link |
 | `sbshot init [source]` | link every run and diff found under `source` (default `./.story-shots` if it exists) |
+| `sbshot du [path...]` | disk use of workspaces: each path is a workspace or a folder searched for `.sbshot`. `--json`, or `--open` for a page |
 
 `init` and `link` never move files. A directory with `shots.json` becomes a
 run, and one with `diff.json` a diff, named after its path
 (`tokens-before/s00` becomes `tokens-before-s00`). `sbshot rm` on a linked
 job only removes the link. Run `init` again to pick up new results.
+
+### Disk use
+
+```bash
+sbshot du ~/Projects            # every .sbshot under ~/Projects, largest first
+sbshot du ~/Projects --open     # the same as a page; each workspace opens its viewer
+```
+
+`du` searches a folder for directories named `.sbshot`, skipping
+`node_modules`, `.git` and hidden folders, up to 6 levels down. A path that is
+a workspace counts whatever its name. Without a path it uses the current
+workspace. `--json` lists every workspace and every job, with sizes and image
+counts.
 
 ## Exit codes
 
