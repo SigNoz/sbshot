@@ -475,24 +475,45 @@ work: tag the modes, tag the causes, and any mode of any cause is one link.
 | `sbshot link <dir> [name]` | add one run or diff from another directory, as a link |
 | `sbshot init [source]` | link every run and diff found under `source` (default `./.story-shots` if it exists) |
 | `sbshot du [path...]` | disk use of workspaces: each path is a workspace or a folder searched for `.sbshot`. `--json`, or `--open` for a page |
+| `sbshot audit [path...]` | which jobs can lose their images, why, and what that frees. Deletes nothing |
 
 `init` and `link` never move files. A directory with `shots.json` becomes a
 run, and one with `diff.json` a diff, named after its path
 (`tokens-before/s00` becomes `tokens-before-s00`). `sbshot rm` on a linked
 job only removes the link. Run `init` again to pick up new results.
 
-### Disk use
+### Freeing disk
 
 ```bash
 sbshot du ~/Projects            # every .sbshot under ~/Projects, largest first
 sbshot du ~/Projects --open     # the same as a page; each workspace opens its viewer
+sbshot audit ~/Projects         # what can go, and why
+sbshot audit --json             # the same with a delete command per job
 ```
 
 `du` searches a folder for directories named `.sbshot`, skipping
 `node_modules`, `.git` and hidden folders, up to 6 levels down. A path that is
-a workspace counts whatever its name. Without a path it uses the current
-workspace. `--json` lists every workspace and every job, with sizes and image
-counts.
+a workspace counts whatever its name. Without a path both commands use the
+current workspace.
+
+`audit` never deletes. It suggests pruning a job's images (png, webp, gif,
+jpg) and keeping everything else: `sbshot.json`, `events.ndjson`,
+`shots.json`, `diff.json`, verdicts and tags. A pruned job keeps its history,
+its timings, which price the next run, and its results; the viewer shows
+"image deleted" where a shot was. A job is kept when:
+
+- it is running,
+- it is one of the newest `--keep` (default 5) of its workspace,
+- it is younger than `--older-than` (default `14d`; `36h` and `90m` work),
+- it is a diff with verdicts or tags, unless `--include-reviewed`,
+- it is a run, or a noise-floor diff, that a kept diff compares: a diff shows
+  the images of the runs it compared.
+
+`--json` gives, per job, the reasons, `usedBy` and `compares`, image count and
+bytes, and the `find ... -delete` command that prunes it. The thumbnail cache
+and builds no run points at are listed apart, each with an `rm -rf`. A run's
+own build is never part of a prune: "open in storybook" serves the run from
+it.
 
 ## Exit codes
 
