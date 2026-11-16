@@ -46,7 +46,7 @@ compares between runs; `shots` has one entry per image, sorted by file.
 ```json
 {
 	"config": {
-		"args": "", "clock": "2026-06-15T12:00:00.000Z", "width": "1680",
+		"args": "", "globals": "", "clock": "2026-06-15T12:00:00.000Z", "width": "1680",
 		"height": "1200", "grow": "scrollers", "motion": "still",
 		"settle": "300", "ignore": "", "highlight": "", "crop": ""
 	},
