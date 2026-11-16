@@ -171,6 +171,12 @@ export const copyPng = async (png, file) => {
 	return 'saved';
 };
 
+/** What a view says where an image does not load: `sbshot audit` deletes the images of old jobs. */
+export const DELETED = 'image deleted';
+
+/** Runs `show` once if `img` fails to load. `error` does not bubble, so each image is wired itself. */
+export const whenGone = (img, show) => img?.addEventListener('error', show, { once: true });
+
 export const pct = (value, digits = 1) => `${(value * 100).toFixed(digits)}%`;
 export const clock = (ms) => (ms ? new Date(ms).toLocaleTimeString() : '');
 export const when = (ms) => (ms ? new Date(ms).toLocaleString() : '');

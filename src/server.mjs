@@ -144,14 +144,36 @@ export const serve = async ({ workspace, port = 0, host = '127.0.0.1' }) => {
 		rootsCache = { at: Date.now(), roots: [...found] };
 		return rootsCache.roots;
 	};
+	const within = (real) =>
+		roots().some((root) => real === root || real.startsWith(`${root}${path.sep}`));
 	const allowed = (file) => {
 		try {
 			const real = realpathSync(file);
-			return roots().some((root) => real === root || real.startsWith(`${root}${path.sep}`))
-				? real
-				: null;
+			return within(real) ? real : null;
 		} catch {
 			return null;
+		}
+	};
+	/**
+	 * A file that is not there, under a root: an image `sbshot audit` deleted.
+	 * The nearest directory that still exists decides, so a path outside every
+	 * root stays refused whether or not it exists. Nothing is served either way.
+	 */
+	const gone = (file) => {
+		if (!path.isAbsolute(file)) {
+			return false;
+		}
+		let dir = path.dirname(path.resolve(file));
+		for (;;) {
+			try {
+				return within(realpathSync(dir));
+			} catch (error) {
+				const up = path.dirname(dir);
+				if (error.code !== 'ENOENT' || up === dir) {
+					return false;
+				}
+				dir = up;
+			}
 		}
 	};
 
@@ -293,7 +315,14 @@ export const serve = async ({ workspace, port = 0, host = '127.0.0.1' }) => {
 
 	/** A JPEG thumbnail of a shot, its caption cropped off, cached by path, mtime and size. */
 	const thumbnail = async (response, file, top, width) => {
-		const { mtimeMs } = await stat(file);
+		let mtimeMs;
+		try {
+			({ mtimeMs } = await stat(file));
+		} catch {
+			// Deleted between the check and here.
+			response.writeHead(404).end();
+			return;
+		}
 		const key = createHash('sha1')
 			.update(`v3\0${file}\0${mtimeMs}\0${top}\0${width}`)
 			.digest('hex');
@@ -473,9 +502,10 @@ export const serve = async ({ workspace, port = 0, host = '127.0.0.1' }) => {
 			}
 
 			if (pathname === '/file' || pathname === '/thumb') {
-				const file = allowed(url.searchParams.get('p') ?? '');
+				const wanted = url.searchParams.get('p') ?? '';
+				const file = allowed(wanted);
 				if (!file) {
-					response.writeHead(403).end();
+					response.writeHead(gone(wanted) ? 404 : 403).end();
 					return;
 				}
 				if (pathname === '/file') {

@@ -4,6 +4,7 @@ import {
 	copyPng,
 	copyText,
 	crumbs,
+	DELETED,
 	esc,
 	fileUrl,
 	flash,
@@ -17,6 +18,7 @@ import {
 	STATIC,
 	thumbUrl,
 	view,
+	whenGone,
 } from './shared.js';
 
 /** A finished run from the older scripts: its shots.json is all there is. */
@@ -134,6 +136,13 @@ export const captureView = async (name, params) => {
 				<div class="line"><span class="mono muted">${esc(item.theme)}</span>
 				<span>${item.duration ? `<span class="muted">${formatDuration(item.duration)}</span> ` : ''}${pill(item.status)}</span></div>
 			</div>`;
+		// A pruned run keeps its results and loses its images.
+		const img = element.querySelector('.thumb img');
+		whenGone(img, () => {
+			const thumb = img.parentElement;
+			thumb.className = 'thumb empty';
+			thumb.textContent = DELETED;
+		});
 	};
 
 	const visible = () => {
@@ -343,6 +352,14 @@ export const captureView = async (name, params) => {
 			${images.map((file) => `<img src="${fileUrl(dir, file)}" alt="" style="margin-bottom:16px" />`).join('')}
 		</div>`;
 		lightbox.scrollTop = 0;
+		for (const img of lightbox.querySelectorAll('.inner > img')) {
+			whenGone(img, () => {
+				const note = document.createElement('div');
+				note.className = 'gone';
+				note.textContent = DELETED;
+				img.replaceWith(note);
+			});
+		}
 		lightbox.querySelector('.close').onclick = () => {
 			lightbox.hidden = true;
 		};
@@ -367,7 +384,10 @@ export const captureView = async (name, params) => {
 
 	/** The file as a PNG: itself, or redrawn where an export holds it as WebP. */
 	const pngOf = async (url) => {
-		const blob = await fetch(url).then((response) => response.blob());
+		const blob = await fetch(url).then((response) => {
+			if (!response.ok) throw new Error(DELETED);
+			return response.blob();
+		});
 		if (blob.type === 'image/png') return blob;
 		const image = await createImageBitmap(blob);
 		const canvas = document.createElement('canvas');

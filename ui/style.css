@@ -166,6 +166,11 @@ tr.link:hover td {
 	border-style: dashed;
 }
 
+.pill.pruned {
+	color: var(--muted);
+	border-style: dashed;
+}
+
 .tag-picker {
 	display: flex;
 	flex-wrap: wrap;
@@ -461,6 +466,18 @@ a.button.disabled {
 #lightbox img {
 	width: 100%;
 	display: block;
+}
+
+/* What stands where an image was deleted. */
+.gone {
+	color: var(--muted);
+	font-size: 13px;
+	text-align: center;
+	padding: 48px 12px;
+	margin-bottom: 16px;
+	background: var(--panel-2);
+	border: 1px dashed var(--line);
+	border-radius: 6px;
 }
 
 #lightbox .close {

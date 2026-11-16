@@ -267,3 +267,52 @@ test('the viewer opens a run in its storybook: a URL as it is, a build served on
 		rmSync(workspace, { recursive: true, force: true });
 	}
 });
+
+test('a deleted image is a 404 on /file and /thumb, and a path outside the roots a 403', async () => {
+	const workspace = mkdtempSync(path.join(import.meta.dirname, '.tmp-'));
+	const outside = mkdtempSync(path.join(import.meta.dirname, '.tmp-'));
+	put(path.join(workspace, 'runs/a/shots.json'), '{"shots":[]}');
+	const shot = path.join(workspace, 'runs/a/dark/x.png');
+	// A real 1x1 PNG: the thumbnail is cut from it where ImageMagick is installed.
+	put(
+		shot,
+		Buffer.from(
+			'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+			'base64',
+		),
+	);
+	put(path.join(outside, 'y.png'), 'not an image');
+	const server = await serve({ workspace });
+	const status = async (route, file) =>
+		(await send(server.url, { path: `${route}?p=${encodeURIComponent(file)}` })).status;
+	try {
+		assert.equal(await status('/file', shot), 200);
+		assert.equal(await status('/thumb', shot), 200);
+
+		rmSync(shot);
+		assert.equal(await status('/file', shot), 404);
+		assert.equal(await status('/thumb', shot), 404);
+		// The directory gone with it.
+		rmSync(path.dirname(shot), { recursive: true });
+		assert.equal(await status('/file', shot), 404);
+		assert.equal(await status('/thumb', shot), 404);
+
+		const elsewhere = path.join(outside, 'y.png');
+		const climbing = path.join(workspace, 'runs/a/dark/../../../../nowhere/z.png');
+		for (const route of ['/file', '/thumb']) {
+			assert.equal(await status(route, elsewhere), 403, `${route} an existing file outside`);
+			assert.equal(
+				await status(route, path.join(outside, 'gone.png')),
+				403,
+				`${route} a missing one`,
+			);
+			assert.equal(await status(route, climbing), 403, `${route} a climb out of the workspace`);
+			assert.equal(await status(route, 'runs/a/dark/x.png'), 403, `${route} a relative path`);
+			assert.equal(await status(route, ''), 403, `${route} no path`);
+		}
+	} finally {
+		await server.close();
+		rmSync(workspace, { recursive: true, force: true });
+		rmSync(outside, { recursive: true, force: true });
+	}
+});
