@@ -530,4 +530,10 @@ process.on('disconnect', async () => {
 	await browser.close();
 	process.exit(0);
 });
+// Playwright's own SIGTERM handler closes the browser and leaves this process
+// running, so a stopped run would wait on it forever.
+process.on('SIGTERM', async () => {
+	await browser.close().catch(() => {});
+	process.exit(0);
+});
 send({ type: 'ready' });
