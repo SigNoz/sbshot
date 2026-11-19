@@ -12,7 +12,7 @@ import { pickHistory } from '../history.mjs';
 import { notify } from '../notify.mjs';
 import { resolvePlaywright } from '../playwright.mjs';
 import { estimate, fold, formatDuration, progressLine } from '../progress.mjs';
-import { availableMemory, cpuSampler } from '../resources.mjs';
+import { availableMemory, cpuSampler, ownMemory } from '../resources.mjs';
 import {
 	buildProject,
 	buildStorybook,
@@ -156,14 +156,22 @@ const selectorList = (values) =>
 /**
  * Ratios of the machine, not counts: the run keeps adding pages while the
  * cores stay below `CPU_ROOM` busy and the memory left after two more pages
- * stays above `MEMORY_FLOOR`, and gives pages back past `CPU_FULL` or under
- * half the floor. A new browser starts once every running one has a driver
- * loop busier than `DRIVER_BUSY`.
+ * stays above `MEMORY_FLOOR`, and gives pages back once the cores stay past
+ * `CPU_FULL` for `HOT_TICKS` samples in a row, or under half the floor. A new
+ * browser starts once every running one has a driver loop busier than
+ * `DRIVER_BUSY`.
  */
 const CPU_ROOM = 0.75;
 const CPU_FULL = 0.9;
+const HOT_TICKS = 2;
 const MEMORY_FLOOR = 0.1;
 const DRIVER_BUSY = 0.5;
+/**
+ * The most a page is priced at. Its share of sbshot's resident memory counts
+ * the pages Chromium processes share once per process, so it runs high, and
+ * uncapped it stops growth on a machine with room to spare.
+ */
+const PAGE_MEMORY = 512 * 1024 ** 2;
 
 const GROW = ['scrollers', 'document', 'none'];
 
@@ -667,17 +675,22 @@ export const capture = async (argv) => {
 	// The machine is sampled rather than sized up front: what a page costs
 	// depends on the story, and the rest of the desktop keeps using it too.
 	// A page costs CPU only once its story renders, so growth is at most a page
-	// per story rendered, which keeps pages from piling up and timing out.
+	// per story rendered, which keeps pages from piling up and timing out. A
+	// page is priced from sbshot's own memory, not from how far the machine's
+	// free memory fell since the start, which the rest of the desktop moves too.
+	// One hot sample is often another app, so only a run of them gives a page
+	// back.
 	const cpuBusy = cpuSampler();
 	const totalMemory = os.totalmem();
-	const baseline = availableMemory();
 	let cpu = 0;
+	let hot = 0;
 	let tick = 0;
 	const control = setInterval(() => {
 		cpu = (cpu + cpuBusy()) / 2;
+		hot = cpu > CPU_FULL ? hot + 1 : 0;
 		const free = availableMemory();
-		const perPage = inFlight ? Math.max(baseline - free, 0) / inFlight : 0;
-		if (cpu > CPU_FULL || free < (totalMemory * MEMORY_FLOOR) / 2) {
+		const perPage = inFlight ? Math.min(ownMemory() / inFlight, PAGE_MEMORY) : 0;
+		if (hot >= HOT_TICKS || free < (totalMemory * MEMORY_FLOOR) / 2) {
 			limit = Math.max(limit - 1, 1);
 		} else if (
 			limit < ceiling &&

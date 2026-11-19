@@ -38,6 +38,50 @@ export const availableMemory = () => {
 	return os.freemem();
 };
 
+/**
+ * Resident memory of `root` and every process under it, from `ps -A -o
+ * pid=,ppid=,rss=` output. Pages a process shares count once per process, so
+ * the sum runs high for a tree of Chromium processes.
+ */
+export const treeMemory = (ps, root) => {
+	const rss = new Map();
+	const children = new Map();
+	for (const line of ps.split('\n')) {
+		const [pid, ppid, kib] = line.trim().split(/\s+/).map(Number);
+		if (pid) {
+			rss.set(pid, kib * 1024);
+			children.set(ppid, [...(children.get(ppid) ?? []), pid]);
+		}
+	}
+	let total = 0;
+	const stack = [root];
+	while (stack.length) {
+		const pid = stack.pop();
+		total += rss.get(pid) ?? 0;
+		stack.push(...(children.get(pid) ?? []));
+	}
+	return total;
+};
+
+let owned = { at: 0, bytes: 0 };
+
+/** Resident memory of this process and its workers and browsers, read at most every 2 s. */
+export const ownMemory = () => {
+	if (Date.now() - owned.at > 2000) {
+		let bytes = 0;
+		try {
+			bytes = treeMemory(
+				execFileSync('ps', ['-A', '-o', 'pid=,ppid=,rss=']).toString(),
+				process.pid,
+			);
+		} catch {
+			/* no ps: pages are priced by CPU and free memory alone */
+		}
+		owned = { at: Date.now(), bytes };
+	}
+	return owned.bytes;
+};
+
 const cpuTimes = () =>
 	os.cpus().reduce(
 		(sum, { times }) => {
