@@ -201,7 +201,8 @@ test('the viewer folds a run again when its events file is replaced by a longer 
 		assert.equal(await status(), 'interrupted');
 		// The run is shot again under the same name: a new file, longer than
 		// the offset the viewer had read the old one to.
-		const again = start + line({ type: 'end', status: 'done' }) + line({ type: 'sample' }).repeat(8);
+		const again =
+			start + line({ type: 'end', status: 'done' }) + line({ type: 'sample' }).repeat(8);
 		put(path.join(run, 'events.next'), again);
 		renameSync(path.join(run, 'events.next'), path.join(run, 'events.ndjson'));
 		assert.equal(await status(), 'done');
