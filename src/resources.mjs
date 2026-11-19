@@ -1,10 +1,23 @@
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import os from 'node:os';
 
 /**
+ * Bytes macOS can hand out without swapping, from `vm_stat`: the free pages
+ * plus the inactive, speculative and purgeable ones it reclaims on demand.
+ */
+export const vmStatAvailable = (text) => {
+	const pageSize = Number(/page size of (\d+) bytes/.exec(text)?.[1] ?? 4096);
+	const pages = (label) =>
+		Number(new RegExp(`^Pages ${label}:\\s+(\\d+)`, 'm').exec(text)?.[1] ?? 0);
+	return (pages('free') + pages('inactive') + pages('speculative') + pages('purgeable')) * pageSize;
+};
+
+/**
  * Bytes the system can hand out without swapping. `os.freemem()` leaves out the
  * page cache the kernel would drop on demand, which on a Linux desktop is most
- * of the memory, so `MemAvailable` is read where there is one.
+ * of the memory, so `MemAvailable` is read where there is one. macOS counts
+ * only its free pages, often under 1% of the memory, so `vm_stat` is read there.
  */
 export const availableMemory = () => {
 	try {
@@ -14,6 +27,13 @@ export const availableMemory = () => {
 		}
 	} catch {
 		/* not Linux */
+	}
+	if (process.platform === 'darwin') {
+		try {
+			return vmStatAvailable(execFileSync('vm_stat').toString());
+		} catch {
+			/* fall through */
+		}
 	}
 	return os.freemem();
 };
