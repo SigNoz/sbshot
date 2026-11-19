@@ -350,6 +350,8 @@ const shoot = async (key, story, theme) => {
 				from: target,
 				to: temporary,
 				theme: theme ?? 'dark',
+				// Each captioned image is a viewport screenshot taken just before.
+				size: page.viewportSize(),
 			});
 			await rename(temporary, target);
 			return rows;
