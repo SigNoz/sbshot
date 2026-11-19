@@ -60,7 +60,10 @@ event-loop load, each story's phase, and the result over the IPC channel.
 
 The coordinator grows the number of pages in flight while the CPU and memory
 it samples leave room, at most one page per story that finished rendering,
-and shrinks it under pressure. A new browser starts when every running one
+and shrinks it under pressure: the CPU past 90% for two samples in a row, or
+free memory under half the floor. `resources.mjs` reads free memory per
+platform and prices a page from the resident memory of sbshot's own process
+tree. A new browser starts when every running one
 has a busy event loop, since that is where CDP messages and screenshots are
 decoded. A failed story is queued again once.
 

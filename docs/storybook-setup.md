@@ -156,7 +156,7 @@ sbshot waits, in order, for:
    same story skip it.
 3. Web fonts, two animation frames, then `--settle` milliseconds.
 4. `window.__sbshotSettle()`, when the preview defines it (see below).
-5. Two identical frames in a row, up to eight tries 400 ms apart. A story
+5. Two identical frames in a row, up to eight tries 250 ms apart. A story
    that never gets there is shot anyway and marked `busy`.
 
 Steps 2 and 3 run again after every viewport resize, since a taller viewport

@@ -226,7 +226,18 @@ will not line up.
 ### Speed
 
 sbshot opens more pages while the CPU stays under 75% and memory is free, and
-closes some past 90%. `--jobs <n>` sets a maximum.
+closes some once the CPU stays past 90% for two samples in a row. `--jobs <n>`
+sets a maximum.
+
+Free memory is what the system could hand out: `MemAvailable` on Linux, and on
+macOS the free, inactive, speculative and purgeable pages `vm_stat` reports
+(`os.freemem()` there counts only the free ones, often under 1% of the memory).
+A page is priced at its share of the memory sbshot's own processes use, capped
+at 512 MB.
+
+A storybook whose mocks answer at once (msw) can lower `--held-after`: a story
+that holds a request open on purpose, such as a loading state, then waits that
+long instead of 15 s. `--held-after 5000` suits most.
 
 When an earlier run of the same stories exists, sbshot uses it to shoot the
 slowest stories first, so one long story does not hold up the end.

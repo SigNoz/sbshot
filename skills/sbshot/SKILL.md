@@ -172,6 +172,15 @@ shortest the viewport may be), `--grow scrollers|document|none`, `--settle`,
 Keep every page flag identical between the two sides of a comparison, or the
 pairs do not line up.
 
+### Speed
+
+- sbshot sizes the number of pages from CPU and memory as it runs; `--jobs`
+  only caps it. Do not run a storybook build or a second capture next to a
+  capture: they compete for the same cores.
+- A storybook whose mocks answer at once (msw) takes `--held-after 5000`:
+  a story that holds a request open on purpose then waits 5 s, not 15 s.
+  Pass it to both sides of a comparison.
+
 ### Runs take minutes: run them in the background
 
 A full sweep takes several minutes. Do not block on it and do not `sleep`.
@@ -343,6 +352,9 @@ whose notes say `0 cropped` never reaches the state: pick another story.
 
 ## Gotchas
 
+- A checkout linked with `pnpm link --global` (or `npm link`) lives in the
+  active Node's global bin. After nvm switches Node, `sbshot` is "command
+  not found": link it again from the checkout.
 - Pointing the human at pairs without tagging them sends them searching the
   viewer by hand. Tag first, then give the links.
 - Port 6006 is often another project's storybook. Check the server's process
