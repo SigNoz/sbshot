@@ -1,5 +1,13 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	renameSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from 'node:fs';
 import { request } from 'node:http';
 import path from 'node:path';
 import { test } from 'node:test';
@@ -174,5 +182,31 @@ test('the build server survives a bad escape and serves no link out of the build
 	} finally {
 		await server.close();
 		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test('the viewer folds a run again when its events file is replaced by a longer one', async () => {
+	const workspace = mkdtempSync(path.join(import.meta.dirname, '.tmp-'));
+	const run = path.join(workspace, 'runs/r');
+	const line = (event) => `${JSON.stringify({ t: 1, ...event })}\n`;
+	const start = line({ type: 'start', kind: 'capture', name: 'r', total: 1, items: [] });
+	put(path.join(run, 'shots.json'), '{"shots":[]}');
+	put(path.join(run, 'events.ndjson'), start + line({ type: 'end', status: 'interrupted' }));
+	const server = await serve({ workspace });
+	const status = async () =>
+		JSON.parse((await send(server.url, { path: '/api/jobs' })).body).jobs.find(
+			(job) => job.name === 'r',
+		).status;
+	try {
+		assert.equal(await status(), 'interrupted');
+		// The run is shot again under the same name: a new file, longer than
+		// the offset the viewer had read the old one to.
+		const again = start + line({ type: 'end', status: 'done' }) + line({ type: 'sample' }).repeat(8);
+		put(path.join(run, 'events.next'), again);
+		renameSync(path.join(run, 'events.next'), path.join(run, 'events.ndjson'));
+		assert.equal(await status(), 'done');
+	} finally {
+		await server.close();
+		rmSync(workspace, { recursive: true, force: true });
 	}
 });
