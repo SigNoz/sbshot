@@ -38,6 +38,15 @@ const {
 
 const send = (message) => process.connected && process.send(message);
 
+/**
+ * How often the quiet check looks again, and how far apart the frames the
+ * stable check compares are. Both are time a settled story spends idle, so
+ * they stay as short as the checks allow; the 600 ms quiet window is the
+ * threshold, not these.
+ */
+const QUIET_POLL = 50;
+const STABLE_GAP = 250;
+
 const { dirOf, shotFile } = shotPaths(outDir, flat);
 
 /**
@@ -128,7 +137,7 @@ const shoot = async (key, story, theme) => {
 			!silent() &&
 			(pending() || Date.now() - lastActivity < 600 || (await busyOnScreen()))
 		) {
-			await page.waitForTimeout(200);
+			await page.waitForTimeout(QUIET_POLL);
 		}
 		if (Date.now() >= quietUntil || silent()) {
 			inFlight.forEach((request) => heldRequests.add(request));
@@ -311,7 +320,7 @@ const shoot = async (key, story, theme) => {
 		let previous = await frame();
 		let stable = false;
 		for (let attempt = 0; attempt < 8 && !stable; attempt += 1) {
-			await page.waitForTimeout(400);
+			await page.waitForTimeout(STABLE_GAP);
 			const next = await frame();
 			stable = next.equals(previous);
 			previous = next;
