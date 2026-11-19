@@ -63,14 +63,28 @@ const commandLine = (args) =>
 			? args
 			: ['convert', ...args];
 
+/**
+ * A call still running after this is stuck, not slow: the largest diff montage
+ * takes seconds. It is killed and run once more, so one hung process cannot
+ * stall a whole diff.
+ */
+const MAGICK_TIMEOUT = 120_000;
+
 export const magick = (args, input) => {
 	const [command, ...rest] = commandLine(args);
-	const result = spawnSync(command, rest, {
-		input,
-		maxBuffer: 1024 * 1024 * 1024,
-	});
+	const run = () =>
+		spawnSync(command, rest, {
+			input,
+			maxBuffer: 1024 * 1024 * 1024,
+			timeout: MAGICK_TIMEOUT,
+			killSignal: 'SIGKILL',
+		});
+	let result = run();
+	if (result.error?.code === 'ETIMEDOUT') {
+		result = run();
+	}
 	if (result.status !== 0) {
-		throw new Error(`${command} ${rest.join(' ')}: ${result.stderr}`);
+		throw new Error(`${command} ${rest.join(' ')}: ${result.error?.message ?? result.stderr}`);
 	}
 	return result.stdout;
 };
