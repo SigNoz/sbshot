@@ -229,6 +229,11 @@ sbshot opens more pages while the CPU stays under 75% and memory is free, and
 closes some once the CPU stays past 90% for two samples in a row. `--jobs <n>`
 sets a maximum.
 
+More pages also make each story slower, which can show in the shots: mock data
+built from a ticking clock reads a second later, and a slow `play` can land
+differently. Shoot both runs of a comparison, and its noise floor, at the same
+`--jobs`.
+
 Free memory is what the system could hand out: `MemAvailable` on Linux, and on
 macOS the free, inactive, speculative and purgeable pages `vm_stat` reports
 (`os.freemem()` there counts only the free ones, often under 1% of the memory).

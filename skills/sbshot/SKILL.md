@@ -180,6 +180,10 @@ pairs do not line up.
 - A storybook whose mocks answer at once (msw) takes `--held-after 5000`:
   a story that holds a request open on purpose then waits 5 s, not 15 s.
   Pass it to both sides of a comparison.
+- Concurrency moves pairs too: under load a story whose mocks read a ticking
+  clock renders a second later, and a slow `play` can land differently. Shoot
+  both sides and the noise floor at the same `--jobs`, and look again at a
+  timing-sensitive story that moved, or reshoot it with `--jobs 1`.
 
 ### Runs take minutes: run them in the background
 
