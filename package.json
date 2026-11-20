@@ -1,6 +1,6 @@
 {
 	"name": "@signozhq/sbshot",
-	"version": "1.0.0",
+	"version": "1.1.0",
 	"description": "Screenshot Storybook stories, pixel-diff two runs, and watch both live in a local viewer",
 	"keywords": [
 		"storybook",
