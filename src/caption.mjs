@@ -63,14 +63,28 @@ const commandLine = (args) =>
 			? args
 			: ['convert', ...args];
 
+/**
+ * A call still running after this is stuck, not slow: the largest diff montage
+ * takes seconds. It is killed and run once more, so one hung process cannot
+ * stall a whole diff.
+ */
+const MAGICK_TIMEOUT = 120_000;
+
 export const magick = (args, input) => {
 	const [command, ...rest] = commandLine(args);
-	const result = spawnSync(command, rest, {
-		input,
-		maxBuffer: 1024 * 1024 * 1024,
-	});
+	const run = () =>
+		spawnSync(command, rest, {
+			input,
+			maxBuffer: 1024 * 1024 * 1024,
+			timeout: MAGICK_TIMEOUT,
+			killSignal: 'SIGKILL',
+		});
+	let result = run();
+	if (result.error?.code === 'ETIMEDOUT') {
+		result = run();
+	}
 	if (result.status !== 0) {
-		throw new Error(`${command} ${rest.join(' ')}: ${result.stderr}`);
+		throw new Error(`${command} ${rest.join(' ')}: ${result.error?.message ?? result.stderr}`);
 	}
 	return result.stdout;
 };
@@ -162,14 +176,14 @@ export const settingsLine = (config, keys = CONFIG_KEYS) =>
  * image's own width, wrapping instead of widening the canvas: a run whose
  * caption is longer must still produce a shot the next run's shot pairs with.
  * Type size follows the width, since a three-tile montage of 1680px shots is
- * over 5000px wide and is read at fit-to-width.
+ * over 5000px wide and is read at fit-to-width. A caller that already knows the
+ * image's `size` passes it and saves an `identify` per image.
  */
-export const stamp = async ({ lines, from, to, theme }) => {
+export const stamp = async ({ lines, from, to, theme, size }) => {
 	const { background, foreground } = palette(theme);
-	const [width, before] = (await magickAsync(['identify', '-format', '%w %h', from]))
-		.toString()
-		.split(' ')
-		.map(Number);
+	const [width, before] = size
+		? [size.width, size.height]
+		: (await magickAsync(['identify', '-format', '%w %h', from])).toString().split(' ').map(Number);
 	const heading = pointsize(width);
 	const spacer = ['-size', `${width}x${Math.round(heading * 0.4)}`, `xc:${background}`];
 

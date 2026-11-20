@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { createReadStream, existsSync, realpathSync } from 'node:fs';
+import { createReadStream, existsSync, realpathSync, statSync } from 'node:fs';
 import { mkdir, stat } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { isIP } from 'node:net';
@@ -91,7 +91,19 @@ export const serve = async ({ workspace, port = 0, host = '127.0.0.1' }) => {
 	// Folded states, advanced from the last offset on each request.
 	const states = new Map();
 	const stateOf = (dir) => {
-		const cached = states.get(dir) ?? { offset: 0, state: fold([]) };
+		let inode;
+		try {
+			inode = statSync(eventsFile(dir)).ino;
+		} catch {
+			/* no events yet */
+		}
+		const cached = states.get(dir) ?? { offset: 0, inode, state: fold([]) };
+		if (cached.inode !== inode) {
+			// A new file, as when a run is shot again under its name: start over,
+			// even when it is already longer than the old offset.
+			states.delete(dir);
+			return stateOf(dir);
+		}
 		const { events, offset } = readEvents(eventsFile(dir), cached.offset);
 		if (offset < cached.offset) {
 			// The file was replaced (a --force rerun): start over.
