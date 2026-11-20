@@ -36,6 +36,7 @@ src/                      what the commands are built from
   export.mjs              a static copy of the viewer and some jobs, as a folder or a zip
   viewer.mjs              one viewer per workspace, started on demand
   workspace.mjs           workspace layout, job lookup, job records
+  usage.mjs               disk use of a workspace, per job, cached by mtime
   notify.mjs              desktop notifications
 ui/                       the viewer: vanilla JS modules, no framework
   app.js                  router
@@ -103,6 +104,9 @@ the workspace, the job event logs as server-sent events (polled, since
 `fs.watch` misses writes on synced folders), images from the workspace and
 the runs its jobs reference, and cached thumbnails with the caption cut
 off. It starts diffs as detached `sbshot diff` processes and writes verdicts.
+It also measures the workspace's disk use for the home page: each job's
+size is kept until the mtime of its directory, or of a directory right
+under it, moves, so only the first walk of a big workspace takes time.
 
 It listens on localhost and refuses requests whose `Host` is not local (DNS
 rebinding): a loopback name, or on a `--host` bind that address, the

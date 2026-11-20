@@ -1,6 +1,7 @@
 import { formatDuration } from './lib/progress.mjs';
 import {
 	api,
+	bytes,
 	crumbs,
 	esc,
 	pct,
@@ -19,6 +20,11 @@ export const home = async () => {
 	let timer;
 	// Jobs ticked for export, by kind and name, kept across refreshes.
 	const chosen = new Set();
+	// Disk use, fetched apart from the list: the first walk of a big
+	// workspace takes a moment, and the list should not wait for it.
+	let usage = null;
+	let bySize = false;
+	const sizeOf = new Map();
 	const render = async () => {
 		let data;
 		try {
@@ -34,9 +40,30 @@ export const home = async () => {
 			location.replace(data.start);
 			return;
 		}
-		document.getElementById('workspace').textContent = data.workspace;
-		const captures = data.jobs.filter((job) => job.kind === 'capture');
-		const diffs = data.jobs.filter((job) => job.kind === 'diff');
+		document.getElementById('workspace').textContent =
+			`${data.workspace}${usage ? ` · ${bytes(usage.total)}` : ''}`;
+		const order = (jobs) =>
+			bySize && usage
+				? jobs.toSorted(
+						(a, b) =>
+							(sizeOf.get(`${b.kind}/${b.name}`)?.size ?? 0) -
+							(sizeOf.get(`${a.kind}/${a.name}`)?.size ?? 0),
+					)
+				: jobs;
+		const captures = order(data.jobs.filter((job) => job.kind === 'capture'));
+		const diffs = order(data.jobs.filter((job) => job.kind === 'diff'));
+
+		const sizeCell = (job) => {
+			if (STATIC) return '';
+			const size = sizeOf.get(`${job.kind}/${job.name}`);
+			if (!size) return `<td class="muted">${usage ? '' : '...'}</td>`;
+			const parts = [
+				size.build &&
+					`${bytes(size.size - size.build)} of shots, ${bytes(size.build)} of storybook build`,
+				size.linked && 'linked in from elsewhere: sbshot rm only removes the link',
+			].filter(Boolean);
+			return `<td class="${size.linked ? 'muted' : ''}" title="${esc(parts.join('. '))}">${bytes(size.size)}${size.linked ? ' (linked)' : ''}</td>`;
+		};
 
 		const row = (job) => {
 			const e = job.estimate;
@@ -63,6 +90,7 @@ export const home = async () => {
 				<td>${esc(counts)}</td>
 				<td class="muted">${esc(when(job.started))}</td>
 				<td class="muted">${esc(took)}</td>
+				${sizeCell(job)}
 			</tr>`;
 		};
 
@@ -75,7 +103,26 @@ export const home = async () => {
 			all: document.getElementById('ex-all')?.checked,
 			runs: document.getElementById('ex-runs')?.checked,
 		};
-		const head = `<thead><tr>${STATIC ? '' : '<th></th>'}<th>Status</th><th>Name</th><th>Progress</th><th>Result</th><th>Started</th><th>Took</th></tr></thead>`;
+		const head = `<thead><tr>${STATIC ? '' : '<th></th>'}<th>Status</th><th>Name</th><th>Progress</th><th>Result</th><th>Started</th><th>Took</th>${
+			STATIC
+				? ''
+				: `<th><a href="#" class="by-size" title="sort by size">${bySize ? 'Size ↓' : 'Size'}</a></th>`
+		}</tr></thead>`;
+		const disk =
+			STATIC || !usage
+				? ''
+				: `<div class="muted disk">${[
+						['runs', usage.runs],
+						['diffs', usage.diffs],
+						['orphan builds', usage.builds],
+						['thumbnail cache', usage.cache],
+						['other', usage.other],
+					]
+						.filter(([, size]) => size)
+						.map(([label, size]) => `${esc(label)} ${bytes(size)}`)
+						.join(' · ')}${
+						usage.linked ? ` · linked from elsewhere ${bytes(usage.linked)}, not counted` : ''
+					} · <span class="mono">sbshot rm &lt;name&gt;</span> frees a run with its build</div>`;
 		const compare = `
 			<h2>Compare two runs</h2>
 			<div class="panel form-grid">
@@ -109,6 +156,7 @@ export const home = async () => {
 			}</div>`;
 
 		view.innerHTML = `
+			${disk}
 			${STATIC && !captures.length ? '' : runs}
 			${STATIC ? '' : compare}
 			<h2>Diffs</h2>
@@ -127,6 +175,13 @@ export const home = async () => {
 		if (STATIC) {
 			return;
 		}
+		view.querySelectorAll('.by-size').forEach((link) => {
+			link.onclick = (event) => {
+				event.preventDefault();
+				bySize = !bySize;
+				render();
+			};
+		});
 
 		// The zip is a plain download: the server streams it as it reads the files.
 		const exportLink = () => {
@@ -196,11 +251,30 @@ export const home = async () => {
 	if (STATIC || stale()) {
 		return;
 	}
+	const measure = async () => {
+		try {
+			usage = await api('/api/usage');
+		} catch {
+			return; // a viewer older than this page: no sizes
+		}
+		sizeOf.clear();
+		for (const row of usage.jobs) sizeOf.set(`${row.kind}/${row.name}`, row);
+		// Not under someone typing in the compare form: the list's own refresh
+		// draws the sizes once they leave it.
+		const typing =
+			view.contains(document.activeElement) && document.activeElement !== document.body;
+		if (!stale() && !typing) render();
+	};
+	measure();
+	const sizes = setInterval(measure, 30_000);
 	// The list only refreshes while nobody is using the compare form.
 	timer = setInterval(() => {
 		if (!view.contains(document.activeElement) || document.activeElement === document.body) {
 			render();
 		}
 	}, 3000);
-	setCleanup(() => clearInterval(timer));
+	setCleanup(() => {
+		clearInterval(timer);
+		clearInterval(sizes);
+	});
 };
