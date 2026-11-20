@@ -334,6 +334,30 @@ Per theme: `<id>.png`, `<id>--highlight.png` (every match ringed in red),
 `crops/<id>--<n>.png` and `crops.png`, a contact sheet of every crop. A story
 whose notes say `0 cropped` never reaches the state: pick another story.
 
+## 6. Freeing disk
+
+Runs and diffs are mostly images, and a workspace grows to tens of GB.
+`sbshot du ~/Projects` sizes every `.sbshot` under a folder (`--open` for a
+page). `sbshot audit [path...] --json` says which jobs can lose their images
+and why. It deletes nothing.
+
+```bash
+sbshot audit ~/Projects --json --older-than 14d --keep 5
+```
+
+Each job has `suggest` (`prune`, `keep` or `no-images`), `reasons`, `ageDays`,
+`images`, `imageBytes`, `usedBy` (diffs that show a run's images),
+`compares`, `review` (verdict and tag counts of a diff) and `commands`, the
+`find ... -delete` that removes its images and keeps every JSON file, so
+history, timings and results survive. `extra` lists the thumbnail cache and
+builds no run points at, each with its own command. A run's `build` carries
+a command too, left out of a prune because "open in storybook" serves the
+run from it.
+
+Show the human the total (`frees`), the largest jobs and the reasons, and
+run the commands only after they agree. Never delete a job whose `suggest`
+is `keep`, and never use `sbshot rm` for this: it deletes the history too.
+
 ## What makes a shot reproducible
 
 - Readiness is Storybook's own render phase (`finished`, after loaders,

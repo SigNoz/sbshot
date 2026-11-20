@@ -16,7 +16,7 @@ src/commands/             one module per command: flags, help, orchestration
   ui.mjs                  ui
   export.mjs              export
   workspace.mjs           init, link, rm
-  du.mjs                  du
+  du.mjs                  du, audit
 src/                      what the commands are built from
   worker.mjs              one browser process of a capture
   playwright.mjs          finding Playwright and launching Chromium
@@ -39,6 +39,7 @@ src/                      what the commands are built from
   workspace.mjs           workspace layout, job lookup, job records
   usage.mjs               disk use of a workspace, per job, cached by mtime
   find.mjs                the .sbshot workspaces under a folder
+  audit.mjs               which jobs can lose their images, and why; deletes nothing
   sizes.mjs               the page of `du --open`: every workspace found, a click from its viewer
   notify.mjs              desktop notifications
 ui/                       the viewer: vanilla JS modules, no framework

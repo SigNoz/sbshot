@@ -15,6 +15,7 @@ const HELP = `sbshot: screenshot storybook stories, diff two runs, watch both li
   sbshot link <dir> [name]               add a run made elsewhere to the workspace
   sbshot rm <job>...                     delete runs or diffs, and builds they made
   sbshot du [path...] [--open]           disk use of workspaces, found under folders
+  sbshot audit [path...] [--json]        which jobs can lose their images; deletes nothing
 
 Every command takes --workspace <dir> (default ./.sbshot, or $SBSHOT_WORKSPACE).
 'sbshot <command> --help' has the options.`;
@@ -43,6 +44,7 @@ const commands = {
 	link: lazy('workspace', 'link'),
 	rm: lazy('workspace', 'remove'),
 	du: lazy('du', 'du'),
+	audit: lazy('du', 'audit'),
 };
 // Older names that still work.
 commands.shoot = commands.capture;

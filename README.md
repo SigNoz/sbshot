@@ -111,6 +111,7 @@ For themes to work, your Storybook preview must read the `theme` global. See
 | `sbshot export [job...]` | write diffs and runs as a static site to host anywhere |
 | `sbshot rm <job>...` | delete runs or diffs |
 | `sbshot du [path...]` | disk use of every `.sbshot` under a folder (`--open` for a page) |
+| `sbshot audit [path...]` | which jobs can lose their images and why; deletes nothing |
 | `sbshot init`, `sbshot link` | add results made elsewhere to the workspace |
 
 `sbshot <command> --help` lists every option.
