@@ -65,6 +65,19 @@ export const home = async () => {
 			return `<td class="${size.linked ? 'muted' : ''}" title="${esc(parts.join('. '))}">${bytes(size.size)}${size.linked ? ' (linked)' : ''}</td>`;
 		};
 
+		// A finished job whose images are all gone, though it did shoot or
+		// compare some: `sbshot audit` deleted them and kept the results.
+		const pruned = (job) => {
+			const images = sizeOf.get(`${job.kind}/${job.name}`)?.images;
+			const made =
+				job.kind === 'diff'
+					? (job.counts?.changed ?? 0)
+					: (job.counts?.ok ?? 0) + (job.counts?.busy ?? 0);
+			return images === 0 && made > 0 && ['done', 'failed', 'interrupted'].includes(job.status)
+				? ' <span class="pill pruned" title="images deleted; results and history kept">pruned</span>'
+				: '';
+		};
+
 		const row = (job) => {
 			const e = job.estimate;
 			const running = ['running', 'building'].includes(job.status);
@@ -79,7 +92,7 @@ export const home = async () => {
 			const key = `${job.kind}/${job.name}`;
 			return `<tr class="link" data-href="#/job/${esc(job.kind)}/${encodeURIComponent(job.name)}">
 				${STATIC ? '' : `<td>${running ? '' : `<input type="checkbox" class="pick" data-key="${esc(key)}" title="export" ${chosen.has(key) ? 'checked' : ''} />`}</td>`}
-				<td>${pill(job.status)}</td>
+				<td>${pill(job.status)}${pruned(job)}</td>
 				<td class="mono">${esc(job.name)}</td>
 				<td style="width:220px">${
 					running

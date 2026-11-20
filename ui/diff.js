@@ -4,6 +4,7 @@ import {
 	copyPng,
 	copyText,
 	crumbs,
+	DELETED,
 	download,
 	esc,
 	fileUrl,
@@ -19,6 +20,7 @@ import {
 	storyOf,
 	STATIC,
 	view,
+	whenGone,
 } from './shared.js';
 import { snapshot } from './snapshot.js';
 
@@ -32,6 +34,14 @@ const MODES = [
 	['onion', 'onion skin'],
 	['blink', 'blink'],
 ];
+
+const placeholderTile = (text) => {
+	const element = document.createElement('div');
+	element.className = 'empty-state';
+	element.style.minHeight = '300px';
+	element.textContent = text;
+	return element;
+};
 
 /**
  * An image shown without the caption band a capture stamped on top: the
@@ -50,9 +60,33 @@ const cropped = (src, top, onReady) => {
 		img.style.marginTop = `-${(top / width) * 100}%`;
 		onReady?.({ width, height: height - top });
 	};
+	// A pruned diff keeps its results and loses its images. The wrapper stays
+	// where it is, so a blink or swipe keeps its layers.
+	whenGone(img, () => {
+		wrap.style.aspectRatio = '';
+		wrap.replaceChildren(placeholderTile(DELETED));
+	});
 	img.src = src;
 	wrap.append(img);
 	return wrap;
+};
+
+/**
+ * Whether one of a pair's images is gone. Drawing the view then fails with
+ * the browser's "source image cannot be decoded", which says nothing of why.
+ */
+const anyGone = async (sources) => {
+	const gone = await Promise.all(
+		Object.values(sources)
+			.filter(Boolean)
+			.map(({ src }) =>
+				fetch(src, { method: 'HEAD' }).then(
+					(response) => response.status === 404,
+					() => false,
+				),
+			),
+	);
+	return gone.includes(true);
 };
 
 export const diffView = async (name, params) => {
@@ -312,7 +346,7 @@ export const diffView = async (name, params) => {
 			download(blob, `${file}.${type}`);
 			say('saved');
 		} catch (error) {
-			say(error.message);
+			say((await anyGone(sourcesOf(pair))) ? DELETED : error.message);
 		}
 	};
 
@@ -481,14 +515,6 @@ export const diffView = async (name, params) => {
 			frame.append(controls, zoomable(stack));
 		}
 		stage.replaceChildren(frame);
-	};
-
-	const placeholderTile = (text) => {
-		const element = document.createElement('div');
-		element.className = 'empty-state';
-		element.style.minHeight = '300px';
-		element.textContent = text;
-		return element;
 	};
 
 	const jumpToChange = () => {
