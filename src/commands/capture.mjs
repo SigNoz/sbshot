@@ -398,6 +398,7 @@ export const capture = async (argv) => {
 
 	const runConfig = {
 		args: storyArgs,
+		globals: extraGlobals,
 		clock: opts.clock,
 		width: opts.width,
 		height: opts.height,

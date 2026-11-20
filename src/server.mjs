@@ -14,6 +14,7 @@ import { jobDetail, jobSummary } from './jobs.mjs';
 import { hostnameOf, LOOPBACK } from './loopback.mjs';
 import { fold } from './progress.mjs';
 import { setVerdict, VERDICTS } from './review.mjs';
+import { serveStatic } from './storybook.mjs';
 import { eventsFile, KINDS, listJobs, readMeta, resolveJob, validName } from './workspace.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -203,6 +204,47 @@ export const serve = async ({ workspace, port = 0, host = '127.0.0.1' }) => {
 
 	const summary = (job) => jobSummary(job, stateOf(job.dir));
 
+	/**
+	 * Static servers of the builds the page opened in Storybook, by real path,
+	 * up until the viewer closes. Each is a server of its own, on its own
+	 * port: the stories run on that origin, never on the viewer's.
+	 */
+	const storybooks = new Map();
+
+	/**
+	 * Where a run's storybook can be opened now, and the globals and args the
+	 * run shot with. A URL source is linked as it is, so it works only while
+	 * that storybook is up. A build, the one given or the one sbshot made of a
+	 * project, is served again. `null` when there is neither.
+	 */
+	const storybookOf = async (runDir) => {
+		const meta = readMeta(runDir);
+		if (meta?.kind !== 'capture') {
+			return null;
+		}
+		const shotWith = {
+			globals: typeof meta.config?.globals === 'string' ? meta.config.globals : '',
+			args: typeof meta.config?.args === 'string' ? meta.config.args : '',
+		};
+		if (typeof meta.storybook === 'string' && /^https?:\/\//.test(meta.storybook)) {
+			return { url: meta.storybook.replace(/\/$/, ''), ...shotWith };
+		}
+		const build = [meta.build, meta.storybook].find(
+			(dir) =>
+				typeof dir === 'string' && path.isAbsolute(dir) && existsSync(path.join(dir, 'index.json')),
+		);
+		if (!build) {
+			return null;
+		}
+		const real = realpathSync(build);
+		if (!storybooks.has(real)) {
+			const started = serveStatic(real);
+			storybooks.set(real, started);
+			started.catch(() => storybooks.delete(real));
+		}
+		return { url: (await storybooks.get(real)).url, ...shotWith };
+	};
+
 	/** SSE of a job's events from `from` on, polled: fs.watch misses writes on synced folders. */
 	const streamEvents = (request, response, dir, from) => {
 		response.writeHead(200, {
@@ -347,6 +389,20 @@ export const serve = async ({ workspace, port = 0, host = '127.0.0.1' }) => {
 						return json(response, { error: error.message }, 400);
 					}
 				}
+				if (verb === '/storybook' && request.method === 'POST') {
+					const { side } = await readBody(request);
+					let runDir = dir;
+					if (kind === 'diff') {
+						if (!['base', 'after'].includes(side)) {
+							return json(response, { error: 'side is base or after' }, 400);
+						}
+						runDir = readMeta(dir)?.[side];
+					}
+					const source = typeof runDir === 'string' ? await storybookOf(runDir) : null;
+					return source
+						? json(response, source)
+						: json(response, { error: 'the run kept no storybook that can be opened' }, 404);
+				}
 				const listed = listJobs(workspace).find((candidate) => candidate.dir === dir);
 				return json(response, jobDetail(kind, dir, listed ? summary(listed) : null));
 			}
@@ -436,10 +492,16 @@ export const serve = async ({ workspace, port = 0, host = '127.0.0.1' }) => {
 	});
 	return {
 		url: `http://${host === '0.0.0.0' ? 'localhost' : host}:${server.address().port}`,
-		close: () =>
-			new Promise((resolve) => {
+		close: async () => {
+			await new Promise((resolve) => {
 				server.closeAllConnections?.();
 				server.close(resolve);
-			}),
+			});
+			await Promise.all(
+				[...storybooks.values()].map((started) =>
+					started.then((storybook) => storybook.close()).catch(() => {}),
+				),
+			);
+		},
 	};
 };

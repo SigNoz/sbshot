@@ -28,9 +28,93 @@ export const api = async (url, options) => {
 	}
 	const response = await fetch(STATIC ? staticUrl(url) : url, options);
 	if (!response.ok) {
-		throw new Error(`${url}: ${response.status}`);
+		const reason = await response
+			.json()
+			.then((body) => body?.error)
+			.catch(() => null);
+		throw new Error(typeof reason === 'string' ? reason : `${url}: ${response.status}`);
 	}
 	return response.json();
+};
+
+/**
+ * The story and theme of a shot file: `<theme>/<id>.png`, a crop
+ * `<theme>/crops/<id>--<n>.png`, or `<id>.png` of a flat run.
+ */
+export const storyOf = (file) => {
+	const parts = file.split('/');
+	const crop = parts.at(-2) === 'crops';
+	let id = parts.at(-1).replace(/\.png$/, '');
+	if (crop) id = id.replace(/--\d+$/, '');
+	const theme = parts.length > (crop ? 2 : 1) ? parts[0] : null;
+	return { id, theme };
+};
+
+/**
+ * Opens a story in the storybook a run shot, with the theme, globals and
+ * args it was shot with. `endpoint` answers where that storybook is, and may
+ * have to start serving a build first, so the tab is opened at once, while
+ * the click still allows it, and pointed at the story once the answer is in.
+ */
+export const openInStorybook = async (endpoint, body, { id, theme }) => {
+	const tab = window.open('', '_blank');
+	try {
+		const { url, globals, args } = await api(endpoint, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(body ?? {}),
+		});
+		// A storybook given as a URL is linked as it is, and the dev server
+		// behind it may be long gone: say so here rather than in a dead tab.
+		await fetch(url, { mode: 'no-cors', cache: 'no-store' }).catch(() => {
+			throw new Error(`nothing answers at ${url}`);
+		});
+		const params = new URLSearchParams({ path: `/story/${id}` });
+		const allGlobals = [theme && theme !== 'default' && `theme:${theme}`, globals]
+			.filter(Boolean)
+			.join(';');
+		if (allGlobals) params.set('globals', allGlobals);
+		if (args) params.set('args', args);
+		const href = `${url}/?${params}`;
+		if (tab) {
+			tab.opener = null;
+			tab.location.href = href;
+		} else {
+			window.open(href, '_blank', 'noopener');
+		}
+	} catch (error) {
+		tab?.close();
+		throw error;
+	}
+};
+
+/** Puts text in the clipboard, or shows it to copy by hand where the page has none. */
+export const copyText = async (text) => {
+	if (navigator.clipboard?.writeText) {
+		await navigator.clipboard.writeText(text);
+		return 'copied';
+	}
+	window.prompt('copy this', text);
+	return 'shown';
+};
+
+/** Runs `action` from a button, and says on the button how it went for a while. */
+export const flash = async (button, action) => {
+	const label = button.dataset.label ?? button.textContent;
+	button.dataset.label = label;
+	const say = (text) => {
+		button.textContent = text;
+		clearTimeout(button.flashTimer);
+		button.flashTimer = setTimeout(() => {
+			if (button.isConnected) button.textContent = label;
+		}, 2500);
+	};
+	try {
+		const result = await action();
+		if (typeof result === 'string') say(result);
+	} catch (error) {
+		say(error.message);
+	}
 };
 
 /**

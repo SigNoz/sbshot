@@ -2,12 +2,15 @@ import { formatDuration, initialState } from './lib/progress.mjs';
 import {
 	api,
 	copyPng,
+	copyText,
 	crumbs,
 	esc,
 	fileUrl,
+	flash,
 	follow,
 	heroStats,
 	lightbox,
+	openInStorybook,
 	pill,
 	routeToken,
 	setCleanup,
@@ -334,6 +337,8 @@ export const captureView = async (name, params) => {
 			${item.files.map((file) => `<a href="${fileUrl(dir, file)}" target="_blank">${esc(file)}</a>`).join(' ')}
 			<span style="flex:1"></span>
 			${index >= 0 ? `<span class="muted">${index + 1} of ${list.length} · j/k or arrows</span>` : ''}
+			<button class="copy-id" title="${esc(item.id)}">copy id</button>
+			${STATIC ? '' : '<button class="open-story">open in storybook (o)</button>'}
 			${images.length ? '<button class="copy">copy image (y)</button>' : ''}</div>
 			${images.map((file) => `<img src="${fileUrl(dir, file)}" alt="" style="margin-bottom:16px" />`).join('')}
 		</div>`;
@@ -343,6 +348,15 @@ export const captureView = async (name, params) => {
 		};
 		const copy = lightbox.querySelector('.copy');
 		if (copy) copy.onclick = () => copyShot(images[0], copy);
+		const copyId = lightbox.querySelector('.copy-id');
+		copyId.onclick = () => flash(copyId, () => copyText(item.id));
+		const open = lightbox.querySelector('.open-story');
+		if (open) {
+			open.onclick = () =>
+				flash(open, () =>
+					openInStorybook(`/api/jobs/capture/${encodeURIComponent(name)}/storybook`, {}, item),
+				);
+		}
 	};
 
 	const step = (by) => {
@@ -392,6 +406,7 @@ export const captureView = async (name, params) => {
 			k: () => step(-1),
 			ArrowLeft: () => step(-1),
 			y: () => lightbox.querySelector('.copy')?.click(),
+			o: () => lightbox.querySelector('.open-story')?.click(),
 		};
 		if (keys[event.key]) {
 			keys[event.key]();

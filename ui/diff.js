@@ -2,17 +2,21 @@ import { initialState } from './lib/progress.mjs';
 import {
 	api,
 	copyPng,
+	copyText,
 	crumbs,
 	download,
 	esc,
 	fileUrl,
+	flash,
 	follow,
 	heroStats,
+	openInStorybook,
 	pct,
 	pill,
 	routeToken,
 	setCleanup,
 	downloadExport,
+	storyOf,
 	STATIC,
 	view,
 } from './shared.js';
@@ -120,7 +124,7 @@ export const diffView = async (name, params) => {
 					<span class="kbd">j</span>/<span class="kbd">k</span> next/previous
 					<span class="kbd">1</span>-<span class="kbd">6</span> view
 					${STATIC ? '' : '<span class="kbd">e</span> expected <span class="kbd">r</span> regression <span class="kbd">f</span> flaky <span class="kbd">c</span> clear'}
-					<span class="kbd">b</span> change box <span class="kbd">z</span> jump to change <span class="kbd">a</span> actual size <span class="kbd">h</span> hover zoom <span class="kbd">y</span> copy view
+					<span class="kbd">b</span> change box <span class="kbd">z</span> jump to change <span class="kbd">a</span> actual size <span class="kbd">h</span> hover zoom <span class="kbd">y</span> copy view${STATIC ? '' : ' <span class="kbd">o</span> open in storybook'}
 				</div>
 			</div>
 		</div>`;
@@ -323,12 +327,21 @@ export const diffView = async (name, params) => {
 			return;
 		}
 		const verdict = review[pair.file];
+		const shots = sourcesOf(pair);
 		$('pair-bar').innerHTML = `<span class="mono">${esc(pair.file)}</span>
 			<span class="muted">${pair.changed ? `${esc(Number(pair.changed).toLocaleString())} px changed (${pct(pair.ratio ?? 0, 3)})` : 'no change'}
 			${pair.width ? ` · ${esc(`${pair.width}x${pair.height}`)}` : ''}</span>
 			${tagsOf(pair.file)
 				.map((tag) => pill('tag', tag))
 				.join(' ')}
+			<button id="p-copy-id" title="${esc(storyOf(pair.file).id)}">copy id</button>
+			${
+				STATIC
+					? ''
+					: `<span class="group"><span class="muted">storybook</span>
+			<button data-story="base" ${shots.base ? '' : 'disabled'} title="open the story in the baseline's storybook">baseline</button>
+			<button data-story="after" ${shots.after ? '' : 'disabled'} title="open the story in the after run's storybook (o)">after</button></span>`
+			}
 			<span style="flex:1"></span>
 			${
 				STATIC
@@ -348,8 +361,21 @@ export const diffView = async (name, params) => {
 			.forEach((button) => {
 				button.onclick = () => setVerdict(button.dataset.verdict);
 			});
+		const copyId = $('p-copy-id');
+		copyId.onclick = () => flash(copyId, () => copyText(storyOf(pair.file).id));
+		$('pair-bar')
+			.querySelectorAll('[data-story]')
+			.forEach((button) => {
+				button.onclick = () =>
+					flash(button, () =>
+						openInStorybook(
+							`/api/jobs/diff/${encodeURIComponent(name)}/storybook`,
+							{ side: button.dataset.story },
+							storyOf(pair.file),
+						),
+					);
+			});
 
-		const shots = sourcesOf(pair);
 		const base = () =>
 			shots.base ? cropped(shots.base.src, shots.base.top) : placeholderTile('missing in baseline');
 		const after = () =>
@@ -538,6 +564,7 @@ export const diffView = async (name, params) => {
 			a: () => $('t-actual').click(),
 			h: () => $('t-hover').click(),
 			y: () => copyView(),
+			o: () => $('pair-bar').querySelector('[data-story="after"]:not(:disabled)')?.click(),
 		};
 		if (/^[1-6]$/.test(event.key)) {
 			setMode(MODES[Number(event.key) - 1][0]);

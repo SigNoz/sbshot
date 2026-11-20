@@ -338,8 +338,8 @@ and start diffs; the command warns when it does.
   failures, the slowest stories, and the shots as they arrive. Filter by
   status, theme or text, and click a shot to see it full size. With a shot
   open, `j` / `k` or the left and right arrows step through the shots the
-  grid shows, in its order, and `y` copies the shot as a PNG (caption band
-  included).
+  grid shows, in its order, `y` copies the shot as a PNG (caption band
+  included) and `o` opens the story in Storybook.
 - A diff's page lists the changed pairs, largest first, and shows the
   selected one. It opens in blink with the change box off; the page keeps
   the mode and the box you pick last. In blink the baseline has a blue
@@ -351,6 +351,13 @@ and start diffs; the command warns when it does.
   saves a looping GIF of the two frames instead, each with its outline
   colour. Without a clipboard (plain
   http off localhost) the PNG is downloaded.
+- An open shot, and the pair a diff shows, can be opened in Storybook (`o`)
+  at that story, with the theme, `--globals` and `--args` it was shot with.
+  A diff offers the baseline's storybook and the after run's. A run of a
+  build or a project opens the build again, served on a port of its own
+  while the viewer runs; a run of a URL links to that URL, so its storybook
+  has to be up. `copy id` puts the story id in the clipboard, ready for
+  `--stories`.
 
 Keys on a diff's page:
 
@@ -365,6 +372,7 @@ Keys on a diff's page:
 | `a` | actual size |
 | `h` | zoom 2.5x around the mouse |
 | `y` | copy the view as a PNG (blink saves a GIF) |
+| `o` | open the story in the after run's storybook |
 
 ## Sharing a diff
 

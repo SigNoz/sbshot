@@ -321,6 +321,14 @@ tr.link:hover td {
 	margin: 12px 0;
 }
 
+/* Buttons that only make sense together, kept on one line when the bar wraps. */
+.toolbar .group {
+	display: inline-flex;
+	gap: 8px;
+	align-items: center;
+	white-space: nowrap;
+}
+
 input,
 select,
 button {

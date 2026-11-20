@@ -211,3 +211,59 @@ test('the viewer folds a run again when its events file is replaced by a longer 
 		rmSync(workspace, { recursive: true, force: true });
 	}
 });
+
+test('the viewer opens a run in its storybook: a URL as it is, a build served on its own port', async () => {
+	const workspace = mkdtempSync(path.join(import.meta.dirname, '.tmp-'));
+	const build = path.join(workspace, 'builds/b');
+	put(path.join(build, 'index.json'), '{"entries":{}}');
+	const meta = (name, fields) =>
+		put(
+			path.join(workspace, 'runs', name, 'sbshot.json'),
+			JSON.stringify({ kind: 'capture', name, status: 'done', ...fields }),
+		);
+	meta('url', { storybook: 'http://localhost:6006/', config: { globals: 'locale:pt', args: '' } });
+	meta('built', { storybook: '/no/such/project', build });
+	meta('gone', { storybook: '/no/such/project', build: path.join(workspace, 'builds/gone') });
+	put(
+		path.join(workspace, 'diffs/d/sbshot.json'),
+		JSON.stringify({
+			kind: 'diff',
+			name: 'd',
+			status: 'done',
+			base: path.join(workspace, 'runs/url'),
+			after: path.join(workspace, 'runs/built'),
+		}),
+	);
+	const server = await serve({ workspace });
+	const open = async (job, body = {}) => {
+		const response = await send(server.url, {
+			method: 'POST',
+			path: `/api/jobs/${job}/storybook`,
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(body),
+		});
+		return { status: response.status, body: JSON.parse(response.body) };
+	};
+	try {
+		assert.deepEqual((await open('capture/url')).body, {
+			url: 'http://localhost:6006',
+			globals: 'locale:pt',
+			args: '',
+		});
+
+		const built = await open('capture/built');
+		assert.equal(built.status, 200);
+		assert.notEqual(new URL(built.body.url).port, new URL(server.url).port);
+		assert.equal((await send(built.body.url, { path: '/index.json' })).body, '{"entries":{}}');
+		// The same build is served once.
+		assert.equal((await open('capture/built')).body.url, built.body.url);
+
+		assert.equal((await open('capture/gone')).status, 404);
+		assert.equal((await open('diff/d', { side: 'base' })).body.url, 'http://localhost:6006');
+		assert.equal((await open('diff/d', { side: 'after' })).body.url, built.body.url);
+		assert.equal((await open('diff/d', { side: 'dir' })).status, 400);
+	} finally {
+		await server.close();
+		rmSync(workspace, { recursive: true, force: true });
+	}
+});
