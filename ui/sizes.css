@@ -1,0 +1,160 @@
+/* The disk use page (sbshot du --open). Colours are the ones of style.css. */
+.du-summary {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	flex-wrap: wrap;
+	margin-bottom: 8px;
+}
+
+.du-summary b {
+	font-size: 20px;
+	font-variant-numeric: tabular-nums;
+}
+
+.du-message {
+	color: var(--fail);
+}
+
+.du-legend {
+	display: flex;
+	gap: 16px;
+	flex-wrap: wrap;
+	font-size: 12px;
+	margin-bottom: 12px;
+}
+
+.du-legend span {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.du-swatch {
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	border-radius: 2px;
+	margin-right: 6px;
+	vertical-align: baseline;
+}
+
+.du-legend .du-swatch {
+	margin-right: 0;
+}
+
+.du-swatch.runs,
+.du-seg.runs {
+	background: var(--accent);
+}
+
+.du-swatch.diffs,
+.du-seg.diffs {
+	background: var(--changed);
+}
+
+.du-swatch.builds,
+.du-seg.builds {
+	background: var(--busy);
+}
+
+.du-swatch.cache,
+.du-seg.cache {
+	background: var(--missing);
+}
+
+.du-swatch.other,
+.du-seg.other {
+	background: var(--flaky);
+}
+
+.du-table th.du-num,
+.du-table td.du-num,
+.du-jobs th.du-num,
+.du-jobs td.du-num {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.du-path {
+	word-break: break-all;
+}
+
+.du-caret {
+	display: inline-block;
+	width: 14px;
+	color: var(--muted);
+}
+
+.du-bar {
+	width: 34%;
+	min-width: 200px;
+}
+
+.du-track {
+	display: flex;
+	height: 12px;
+	border-radius: 6px;
+	background: var(--panel-2);
+	overflow: hidden;
+}
+
+.du-seg {
+	flex-basis: 0;
+	flex-shrink: 1;
+	min-width: 2px;
+	border-right: 1px solid var(--panel);
+}
+
+.du-seg:last-child {
+	border-right: 0;
+}
+
+tr.du-row:focus-visible {
+	outline: 1px solid var(--accent);
+	outline-offset: -1px;
+}
+
+tr.du-row[aria-expanded='true'] td {
+	border-bottom-color: transparent;
+}
+
+tr.du-detail > td {
+	background: var(--panel-2);
+	padding: 12px 14px 14px 34px;
+}
+
+.du-detail-body {
+	display: grid;
+	gap: 10px;
+	font-size: 13px;
+}
+
+.du-parts {
+	display: flex;
+	gap: 8px 24px;
+	flex-wrap: wrap;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.du-jobs {
+	max-width: 720px;
+}
+
+.du-jobs th,
+.du-jobs td {
+	padding: 4px 10px;
+	border-bottom-color: var(--panel);
+}
+
+button.du-open {
+	padding: 3px 12px;
+}
+
+button:disabled {
+	opacity: 0.6;
+	cursor: progress;
+}
